@@ -1,6 +1,8 @@
+import constants as c
 import pygame, sys
 from pygame.locals import *
 import pygame.gfxdraw
+from Graphics import GFXDrawCircleSprite
 #import spidev
 #import RPi.GPIO as GPIO
 import time
@@ -10,18 +12,8 @@ pygame.init()
 pygame.font.init()
 
 font = pygame.font.SysFont('Arial', 30)
- 
-FPS = 24
+
 FramePerSec = pygame.time.Clock()
- 
-# Predefined some colors
-BLUE  = (0, 0, 255)
-RED   = (255, 0, 0)
-GREEN = (0, 255, 0)
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-YELLOW = (255, 255, 0)
-PURPLE = (128, 0, 128)
 
 #SPI Configuration 
 # Use BCM pi mode for compatibility
@@ -43,34 +35,8 @@ PURPLE = (128, 0, 128)
 #spi.mode = 0b00
 #spi.max_speed_hz = 1200000
 
-
-# Screen dimensions
-SCREEN_WIDTH = 720
-SCREEN_HEIGHT = 1000
-RADIUS1 = 55
-RADIUS2 = 35
-#Alignment Vectors
-half = int(SCREEN_WIDTH/2)
-quarter = int(SCREEN_WIDTH/4)
-t_quarter = int(3*SCREEN_WIDTH/4)
-v_y_divider = int(SCREEN_HEIGHT*0.05)
-hl_x_divider = int(SCREEN_WIDTH*0.05)
-hl_y_divider = int(3*SCREEN_HEIGHT/4)
-hr_x_divider = int(SCREEN_WIDTH*0.55)
-hr_y_divider = int(2*SCREEN_HEIGHT/3)
-col_one = int(SCREEN_WIDTH/8)
-col_two = int(3*SCREEN_WIDTH/8)
-col_three = int(5*SCREEN_WIDTH/8)
-col_four = int(7*SCREEN_WIDTH/8)
-row_one = int(3*SCREEN_HEIGHT/24)
-row_two = int(7*SCREEN_HEIGHT/24)
-row_three = int(11*SCREEN_HEIGHT/24)
-row_four = int(15*SCREEN_HEIGHT/24)
-row_five = int(19*SCREEN_HEIGHT/24)
-row_six = int(22*SCREEN_HEIGHT/24)
-
-DISPLAYSURF = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-DISPLAYSURF.fill(BLACK)
+DISPLAYSURF = pygame.display.set_mode((c.SCREEN_WIDTH, c.SCREEN_HEIGHT))
+DISPLAYSURF.fill(c.BLACK)
 pygame.display.set_caption("EICAS")
 pygame.mouse.set_visible(True)
 
@@ -306,231 +272,6 @@ class SensorPack():
         return(self.RightTank)
 
 
-class GFXDrawCircleSprite():
-    def __init__(self):
-        pass
-
-    def dialScale(self, x, orgmin, orgmax, newmin, newmax):
-        scaled_x = ((x - orgmin) / (orgmax - orgmin)) * (newmax - newmin) + newmin
-        return(scaled_x)
-
-    def eicasComponents(self, screen):
-        super().__init__() 
-
-        # Draw Vertical Divider
-        pygame.gfxdraw.box(screen, (half, v_y_divider, 3, 750), GREEN)
-
-        # Draw Left Horizontal Divider
-        pygame.gfxdraw.box(screen, (hl_x_divider, hl_y_divider, 290, 3), GREEN)
-
-        # Draw Right Horizontal Divider
-        pygame.gfxdraw.box(screen, (hr_x_divider, hr_y_divider, 290, 3), GREEN)
-
-        #FADEC Indicator
-        pygame.gfxdraw.filled_polygon(screen, [(650,10), (670,10), (670,30), (650,30)], RED)
-
-        # Engine Data
-        # Draw N1 Engine 1
-        pygame.gfxdraw.arc(screen, col_one, row_one, RADIUS1, 0, 245, WHITE)
-        pygame.gfxdraw.rectangle(screen, ((col_one + 10), (row_one - RADIUS1 - 5), 60, 40), WHITE)
-        pygame.gfxdraw.hline(screen, (col_one + RADIUS1), (col_one + RADIUS1 + 5), row_one, WHITE)
-        pygame.gfxdraw.line(screen, col_one - 24, row_one - 50, col_one - 28, row_one - 60, RED)
-        pygame.gfxdraw.line(screen, col_one - 31, row_one - 45, col_one - 36, row_one - 55, YELLOW)
-
-
-        # Draw N1 Engine 2
-        pygame.gfxdraw.arc(screen, col_two, row_one, RADIUS1, 0, 245, WHITE)
-        pygame.gfxdraw.rectangle(screen, ((col_two + 10), (row_one - RADIUS1 - 5), 60, 40), WHITE)
-        pygame.gfxdraw.hline(screen, (col_two + RADIUS1), (col_two + RADIUS1 + 5), row_one, WHITE)
-        pygame.gfxdraw.line(screen, col_two - 24, row_one - 50, col_two - 28, row_one - 60, RED)
-        pygame.gfxdraw.line(screen, col_two - 31, row_one - 45, col_two - 36, row_one - 55, YELLOW)
-
-
-        # Draw EGT Engine 1
-        pygame.gfxdraw.arc(screen, col_one, row_two, 55, 0, 245, WHITE)
-        pygame.gfxdraw.rectangle(screen, ((col_one + 10), (row_two - RADIUS1 - 5), 60, 40), WHITE)
-        pygame.gfxdraw.hline(screen, (col_one + RADIUS1), (col_one + RADIUS1 + 5), row_two, WHITE)
-        pygame.gfxdraw.line(screen, col_one - 24, row_two - 50, col_one - 28, row_two - 60, RED)
-        pygame.gfxdraw.line(screen, col_one - 31, row_two - 45, col_one - 36, row_two - 55, YELLOW)
-
-        # Draw EGT Engine 2
-        pygame.gfxdraw.arc(screen, col_two, row_two, 55, 0, 245, WHITE)
-        pygame.gfxdraw.rectangle(screen, ((col_two + 10), (row_two - RADIUS1 - 5), 60, 40), WHITE)
-        pygame.gfxdraw.hline(screen, (col_two + RADIUS1), (col_two + RADIUS1 + 5), row_two, WHITE)
-        pygame.gfxdraw.line(screen, col_two - 24, row_two - 50, col_two - 28, row_two - 60, RED)
-        pygame.gfxdraw.line(screen, col_two - 31, row_two - 45, col_two - 36, row_two - 55, YELLOW)
-
-        # Draw N2 Engine 1
-        pygame.gfxdraw.arc(screen, col_one, row_three, 55, 0, 245, WHITE)
-        pygame.gfxdraw.rectangle(screen, ((col_one + 10), (row_three - RADIUS1 - 5), 60, 40), WHITE)
-        pygame.gfxdraw.hline(screen, (col_one + RADIUS1), (col_one + RADIUS1 + 5), row_three, WHITE)
-        pygame.gfxdraw.line(screen, col_one - 24, row_three - 50, col_one - 28, row_three - 60, RED)
-        pygame.gfxdraw.line(screen, col_one - 31, row_three - 45, col_one - 36, row_three - 55, YELLOW)
-
-        # Draw N2 Engine 2
-        pygame.gfxdraw.arc(screen, col_two, row_three, 55, 0, 245, WHITE)
-        pygame.gfxdraw.rectangle(screen, ((col_two + 10), (row_three - RADIUS1 - 5), 60, 40), WHITE)
-        pygame.gfxdraw.hline(screen, (col_two + RADIUS1), (col_two + RADIUS1 + 5), row_three, WHITE)
-        pygame.gfxdraw.line(screen, col_two - 24, row_three - 50, col_two - 28, row_three - 60, RED)
-        pygame.gfxdraw.line(screen, col_two - 31, row_three - 45, col_two - 36, row_three - 55, YELLOW)
-
-        # Draw FF/FU Engine 1
-        pygame.gfxdraw.arc(screen, col_one, row_four, 55, 0, 245, WHITE)
-        pygame.gfxdraw.rectangle(screen, ((col_one + 10), (row_four - RADIUS1 - 5), 60, 40), WHITE)
-        pygame.gfxdraw.hline(screen, (col_one + RADIUS1), (col_one + RADIUS1 + 5), row_four, WHITE)
-        pygame.gfxdraw.line(screen, col_one - 24, row_four - 50, col_one - 28, row_four - 60, RED)
-
-        # Draw FF/FU Engine 2
-        pygame.gfxdraw.arc(screen, col_two, row_four, 55, 0, 245, WHITE)
-        pygame.gfxdraw.rectangle(screen, ((col_two + 10), (row_four - RADIUS1 - 5), 60, 40), WHITE)
-        pygame.gfxdraw.hline(screen, (col_two + RADIUS1), (col_two + RADIUS1 + 5), row_four, WHITE)
-        pygame.gfxdraw.line(screen, col_two - 24, row_four - 50, col_two - 28, row_four - 60, RED)
-
-        # Oil and Vibration
-        # Oil Pressure Left
-        pygame.gfxdraw.arc(screen, col_three, row_one, RADIUS2, 40, 320, WHITE)
-        pygame.gfxdraw.pie(screen, col_three, row_one, RADIUS2+10, 40, 40, WHITE)
-        pygame.gfxdraw.pie(screen, col_three, row_one, RADIUS2+10, 320, 320, WHITE)
-        pygame.gfxdraw.filled_trigon(screen, col_three, row_one, col_three+25, row_one+24, col_three+25, row_one-24, BLACK)
-
-        # Oil Pressure Right
-        pygame.gfxdraw.arc(screen, col_four, row_one, RADIUS2, 40, 320, WHITE)
-        pygame.gfxdraw.pie(screen, col_four, row_one, RADIUS2+10, 40, 40, WHITE)
-        pygame.gfxdraw.pie(screen, col_four, row_one, RADIUS2+10, 320, 320, WHITE)
-        pygame.gfxdraw.filled_trigon(screen, col_four, row_one, col_four+25, row_one+24, col_four+25, row_one-24, BLACK)
-
-        # Oil Temp Left
-        pygame.gfxdraw.arc(screen, col_three, row_two, RADIUS2, 40, 320, WHITE)
-
-        # Oil Temp Right
-        pygame.gfxdraw.arc(screen, col_four, row_two, RADIUS2, 40, 320, WHITE)
-
-        # Oil Quantity Left
-        pygame.gfxdraw.rectangle(screen, (col_three - RADIUS2, row_three - RADIUS2, 60, 40), WHITE)
-
-        # Oil Quantity Right
-        pygame.gfxdraw.rectangle(screen, (col_four - RADIUS2, row_three - RADIUS2, 60, 40), WHITE)
-
-        # Vibration Left
-        pygame.gfxdraw.arc(screen, col_three, row_four - 25, 35, 110, 370, WHITE)
-
-        # Vibration Right
-        pygame.gfxdraw.arc(screen, col_four, row_four - 25, 35, 110, 370, WHITE)
-
-        # Hydraulic Pressure and Quantity
-        # Hyd Press Left
-        pygame.gfxdraw.arc(screen, col_three, row_six, RADIUS1, 40, 320, WHITE)
-
-        # Hyd Press Right
-        pygame.gfxdraw.arc(screen, col_four, row_six, RADIUS1, 40, 320, WHITE)
-
-        # Hyd Quantity Left
-        pygame.gfxdraw.rectangle(screen, (col_three, row_six, 60, 40), WHITE)
-
-        # Hyd Quantity Right
-        pygame.gfxdraw.rectangle(screen, (col_four, row_six, 60, 40), WHITE)
-
-        # Fuel Quantity and Balance
-        # Fuel Left
-        pygame.gfxdraw.arc(screen, col_one, row_six, RADIUS2, 140, 395, WHITE)
-        pygame.gfxdraw.pie(screen, col_one, row_six, RADIUS2+10, 140, 395, WHITE)
-
-        # Fuel Center
-        pygame.gfxdraw.arc(screen, quarter, (row_six - 60), RADIUS2+10, 140, 395, WHITE)
-        pygame.gfxdraw.pie(screen, quarter, (row_six - 60), RADIUS2+20, 140, 395, WHITE)
-
-        # Fuel Right
-        pygame.gfxdraw.arc(screen, col_two, row_six, RADIUS2, 140, 395, WHITE)
-        pygame.gfxdraw.pie(screen, col_two, row_six, RADIUS2+10, 140, 395, WHITE)
-
-
-    def draw(self, screen):
-        self.eicasComponents(screen)
-
-    def drawDials(self, screen, sensors):
-        super().__init__() 
-
-        # Fadec Status
-        if sensors.readFadecStatus():
-            pygame.gfxdraw.filled_polygon(screen, [(650,10), (670,10), (670,30), (650,30)], GREEN)
-
-        # Engine Data
-        # Draw N1 Engine 1
-        dial = round(self.dialScale(sensors.readN1Left(), 0, 100, 0, 245))
-        pygame.gfxdraw.pie(screen, col_one, row_one, RADIUS1, dial, dial, WHITE) # 0-245
-
-        # Draw N1 Engine 2
-        dial = round(self.dialScale(sensors.readN1Right(), 0, 100, 0, 245))
-        pygame.gfxdraw.pie(screen, col_two, row_one, RADIUS1, dial, dial, WHITE) #0-245
-
-        # Draw EGT Engine 1
-        dial = round(self.dialScale(sensors.readEgtLeft(), 0, 1000, 0, 245))
-        pygame.gfxdraw.pie(screen, col_one, row_two, RADIUS1, dial, dial, WHITE)
-
-        # Draw EGT Engine 2
-        dial = round(self.dialScale(sensors.readEgtRight(), 0, 1000, 0, 245))
-        pygame.gfxdraw.pie(screen, col_two, row_two, RADIUS1, dial, dial, WHITE)
-
-        # Draw N2 Engine 1
-        dial = round(self.dialScale(sensors.readN2Left(), 0, 100, 0, 245))
-        pygame.gfxdraw.pie(screen, col_one, row_three, RADIUS1, dial, dial, WHITE)
-
-        # Draw N2 Engine 2
-        dial = round(self.dialScale(sensors.readN2Right(), 0, 100, 0, 245))
-        pygame.gfxdraw.pie(screen, col_two, row_three, RADIUS1, dial, dial, WHITE)
-
-        # Draw FF/FU Engine 1
-        dial = round(self.dialScale(sensors.readFFULeft(), 0, 6, 0, 245))
-        pygame.gfxdraw.pie(screen, col_one, row_four, RADIUS1, dial, dial, WHITE)
-
-
-        # Draw FF/FU Engine 2
-        dial = round(self.dialScale(sensors.readFFURight(), 0, 6, 0, 245))
-        pygame.gfxdraw.pie(screen, col_two, row_four, RADIUS1, dial, dial, WHITE)
-
-        # Oil and Vibration
-        # Oil Pressure Left
-        dial = round(self.dialScale(sensors.readN2Left(), 0, 100, 40, 320))
-        pygame.gfxdraw.pie(screen, col_three, row_one, RADIUS2, dial, dial, WHITE)
-
-
-        # Oil Pressure Right
-        pygame.gfxdraw.arc(screen, col_four, row_one, 35, 40, 320, WHITE)
-
-        # Oil Temp Left
-        pygame.gfxdraw.arc(screen, col_three, row_two, 35, 40, 320, WHITE)
-
-        # Oil Temp Right
-        pygame.gfxdraw.arc(screen, col_four, row_two, 35, 40, 320, WHITE)
-
-        # Vibration Left
-        dial = round(self.dialScale(sensors.readN2Left(), 0, 100, 110, 370))
-        pygame.gfxdraw.pie(screen, col_three, row_four - 25, RADIUS2, dial, dial, WHITE)
-
-        # Vibration Right
-        dial = round(self.dialScale(sensors.readN2Left(), 0, 100, 110, 370))
-        pygame.gfxdraw.pie(screen, col_four, row_four - 25, RADIUS2, dial, dial, WHITE)
-
-        # Hydraulic Pressure and Quantity
-        # Hyd Press Left
-        pygame.gfxdraw.arc(screen, col_three, row_five, 55, 40, 320, WHITE)
-
-        # Hyd Press Right
-        pygame.gfxdraw.arc(screen, col_four, row_five, 55, 40, 320, WHITE)
-
-
-        # Fuel Quantity and Balance
-        # Fuel Left
-        dial = round(self.dialScale(sensors.readLeftTank(), 0, 3000, 140, 395))
-        pygame.gfxdraw.pie(screen, col_one, row_six, RADIUS2+10, dial, dial, WHITE)
-
-        # Fuel Center
-        dial = round(self.dialScale(sensors.readCenterTank(), 0, 10000, 140, 395))
-        pygame.gfxdraw.pie(screen, quarter, (row_six - 60), RADIUS2+20, dial, dial, WHITE)
-
-        # Fuel Right
-        dial = round(self.dialScale(sensors.readRightTank(), 0, 3000, 140, 395))
-        pygame.gfxdraw.pie(screen, col_two, row_six, RADIUS2+10, dial, dial, WHITE)
 
 
 class TextElement:
@@ -541,19 +282,19 @@ class TextElement:
         self.font = pygame.font.SysFont("Arial", 20)
 
         text_data = [
-        {"text": "TAT", "color": BLUE, "pos": (260, 20)},
-        {"text": "FADEC ENABLED", "color": BLUE, "pos": (560, 20)},
-        {"text": "N1", "color": GREEN, "pos": (quarter, row_one+50)},
-        {"text": "EGT", "color": GREEN, "pos": (quarter, row_two+50)},
-        {"text": "N2", "color": GREEN, "pos": (quarter, row_three+50)},
-        {"text": "FF/FU", "color": BLUE, "pos": (quarter, row_four+50)},
-        {"text": "OIL P", "color": GREEN, "pos": (t_quarter, row_one+30)},
-        {"text": "OIL T", "color": GREEN, "pos": (t_quarter, row_two+30)},
-        {"text": "OIL Q%", "color": GREEN, "pos": (t_quarter, row_three+30)},
-        {"text": "VIB", "color": GREEN, "pos": (t_quarter, row_four+30)},
-        {"text": "HYD P", "color": GREEN, "pos": (t_quarter, (row_six - 40))},
-        {"text": "HYD Q", "color": GREEN, "pos": (t_quarter, row_six)},
-        {"text": "FUEL KG", "color": GREEN, "pos": (quarter, (hl_y_divider + 30))}
+        {"text": "TAT", "color": c.BLUE, "pos": (260, 20)},
+        {"text": "FADEC ENABLED", "color": c.BLUE, "pos": (560, 20)},
+        {"text": "N1", "color": c.GREEN, "pos": (c.quarter, c.row_one+50)},
+        {"text": "EGT", "color": c.GREEN, "pos": (c.quarter, c.row_two+50)},
+        {"text": "N2", "color": c.GREEN, "pos": (c.quarter, c.row_three+50)},
+        {"text": "FF/FU", "color": c.BLUE, "pos": (c.quarter, c.row_four+50)},
+        {"text": "OIL P", "color": c.GREEN, "pos": (c.t_quarter, c.row_one+30)},
+        {"text": "OIL T", "color": c.GREEN, "pos": (c.t_quarter, c.row_two+30)},
+        {"text": "OIL Q%", "color": c.GREEN, "pos": (c.t_quarter, c.row_three+30)},
+        {"text": "VIB", "color": c.GREEN, "pos": (c.t_quarter, c.row_four+30)},
+        {"text": "HYD P", "color": c.GREEN, "pos": (c.t_quarter, (c.row_six - 40))},
+        {"text": "HYD Q", "color": c.GREEN, "pos": (c.t_quarter, c.row_six)},
+        {"text": "FUEL KG", "color": c.GREEN, "pos": (c.quarter, (c.hl_y_divider + 30))}
         ]
         for item in text_data:
             text_surface = self.font.render(item["text"], True, item["color"])
@@ -564,15 +305,15 @@ class TextElement:
         self.font = pygame.font.SysFont("Arial", 24)
 
         text_data = [
-        {"text": str(round(sensor.readTAT(),1)), "color": WHITE, "pos": (320, 6)},
-        {"text": str(round(sensor.readN1Left(),1)), "color": WHITE, "pos": (col_one + RADIUS1 + 8, row_one - RADIUS1)},
-        {"text": str(round(sensor.readN1Right(),1)), "color": WHITE, "pos": (col_two + RADIUS1 + 8, row_one - RADIUS1)},
-        {"text": str(sensor.readEgtLeft()), "color": WHITE, "pos": (col_one + RADIUS1 + 8, row_two - RADIUS1)},
-        {"text": str(sensor.readEgtRight()), "color": WHITE, "pos": (col_two + RADIUS1 + 8, row_two - RADIUS1)},
-        {"text": str(round(sensor.readN1Left(),1)), "color": WHITE, "pos": (col_one + RADIUS1 + 8, row_three - RADIUS1)},
-        {"text": str(round(sensor.readN1Right(),1)), "color": WHITE, "pos": (col_two + RADIUS1 + 8, row_three - RADIUS1)},
-        {"text": str(sensor.readFFULeft()), "color": WHITE, "pos": (col_one + RADIUS1 + 8, row_four - RADIUS1)},
-        {"text": str(sensor.readFFURight()), "color": WHITE, "pos": (col_two + RADIUS1 + 8, row_four - RADIUS1)}
+        {"text": str(round(sensor.readTAT(),1)), "color": c.WHITE, "pos": (320, 6)},
+        {"text": str(round(sensor.readN1Left(),1)), "color": c.WHITE, "pos": (c.col_one + c.RADIUS1 + 8, c.row_one - c.RADIUS1)},
+        {"text": str(round(sensor.readN1Right(),1)), "color": c.WHITE, "pos": (c.col_two + c.RADIUS1 + 8, c.row_one - c.RADIUS1)},
+        {"text": str(sensor.readEgtLeft()), "color": c.WHITE, "pos": (c.col_one + c.RADIUS1 + 8, c.row_two - c.RADIUS1)},
+        {"text": str(sensor.readEgtRight()), "color": c.WHITE, "pos": (c.col_two + c.RADIUS1 + 8, c.row_two - c.RADIUS1)},
+        {"text": str(round(sensor.readN1Left(),1)), "color": c.WHITE, "pos": (c.col_one + c.RADIUS1 + 8, c.row_three - c.RADIUS1)},
+        {"text": str(round(sensor.readN1Right(),1)), "color": c.WHITE, "pos": (c.col_two + c.RADIUS1 + 8, c.row_three - c.RADIUS1)},
+        {"text": str(sensor.readFFULeft()), "color": c.WHITE, "pos": (c.col_one + c.RADIUS1 + 8, c.row_four - c.RADIUS1)},
+        {"text": str(sensor.readFFURight()), "color": c.WHITE, "pos": (c.col_two + c.RADIUS1 + 8, c.row_four - c.RADIUS1)}
         ]
 
         for item in text_data:
@@ -581,27 +322,27 @@ class TextElement:
             screen.blit(text_surface, text_rect)
 
     def drawFuelVals(self, screen, sensor):
-        WARN = BLACK
-        WARN_TEXT = WHITE
-        WARN_LABEL = BLUE
+        WARN = c.BLACK
+        WARN_TEXT = c.WHITE
+        WARN_LABEL = c.BLUE
 
         imbalance = sensor.readRightTank() - sensor.readLeftTank()
         if abs(imbalance) > 500:
-            WARN = RED
-            WARN_TEXT = RED
-            WARN_LABEL = RED
+            WARN = c.RED
+            WARN_TEXT = c.RED
+            WARN_LABEL = c.RED
 
         self.font = pygame.font.SysFont("Arial", 19)
 
         text_data = [
-        {"text": "CTR", "color": BLUE, "pos": (quarter, row_six - 45)},
-        {"text": "L", "color": WARN_LABEL, "pos": (col_one, row_six + 15)},
-        {"text": "R", "color": WARN_LABEL, "pos": (col_two, row_six + 15)},
-        {"text": "IMBALANCE", "color": WARN, "pos": (col_one, row_six + 35)},
-        {"text": "IMBALANCE", "color": WARN, "pos": (col_two, row_six + 35)},
-        {"text": str(sensor.readCenterTank()), "color": WHITE, "pos": (quarter, row_six - 65)},
-        {"text": str(sensor.readRightTank()), "color": WARN_TEXT, "pos": (col_one, row_six - 5)},
-        {"text": str(sensor.readLeftTank()), "color": WARN_TEXT, "pos": (col_two, row_six - 5)}
+        {"text": "CTR", "color": c.BLUE, "pos": (c.quarter, c.row_six - 45)},
+        {"text": "L", "color": WARN_LABEL, "pos": (c.col_one, c.row_six + 15)},
+        {"text": "R", "color": WARN_LABEL, "pos": (c.col_two, c.row_six + 15)},
+        {"text": "IMBALANCE", "color": WARN, "pos": (c.col_one, c.row_six + 35)},
+        {"text": "IMBALANCE", "color": WARN, "pos": (c.col_two, c.row_six + 35)},
+        {"text": str(sensor.readCenterTank()), "color": c.WHITE, "pos": (c.quarter, c.row_six - 65)},
+        {"text": str(sensor.readRightTank()), "color": WARN_TEXT, "pos": (c.col_one, c.row_six - 5)},
+        {"text": str(sensor.readLeftTank()), "color": WARN_TEXT, "pos": (c.col_two, c.row_six - 5)}
         ]
 
         for item in text_data:
@@ -613,14 +354,14 @@ class TextElement:
     def drawDialNums(self, screen):
         self.font = pygame.font.SysFont("Arial", 12)
         text_data = [
-        {"text": "1", "color": WHITE, "pos": (col_one + RADIUS1 + 2, row_one)},
-        {"text": "1", "color": WHITE, "pos": (col_two + RADIUS1 + 2, row_one)},
-        {"text": "1", "color": WHITE, "pos": (col_one + RADIUS1 + 2, row_two)},
-        {"text": "1", "color": WHITE, "pos": (col_two + RADIUS1 + 2, row_two)},
-        {"text": "1", "color": WHITE, "pos": (col_one + RADIUS1 + 2, row_three)},
-        {"text": "1", "color": WHITE, "pos": (col_two + RADIUS1 + 2, row_three)},
-        {"text": "1", "color": WHITE, "pos": (col_one + RADIUS1 + 2, row_four)},
-        {"text": "1", "color": WHITE, "pos": (col_two + RADIUS1 + 2, row_four)}
+        {"text": "1", "color": c.WHITE, "pos": (c.col_one + c.RADIUS1 + 2, c.row_one)},
+        {"text": "1", "color": c.WHITE, "pos": (c.col_two + c.RADIUS1 + 2, c.row_one)},
+        {"text": "1", "color": c.WHITE, "pos": (c.col_one + c.RADIUS1 + 2, c.row_two)},
+        {"text": "1", "color": c.WHITE, "pos": (c.col_two + c.RADIUS1 + 2, c.row_two)},
+        {"text": "1", "color": c.WHITE, "pos": (c.col_one + c.RADIUS1 + 2, c.row_three)},
+        {"text": "1", "color": c.WHITE, "pos": (c.col_two + c.RADIUS1 + 2, c.row_three)},
+        {"text": "1", "color": c.WHITE, "pos": (c.col_one + c.RADIUS1 + 2, c.row_four)},
+        {"text": "1", "color": c.WHITE, "pos": (c.col_two + c.RADIUS1 + 2, c.row_four)}
         ]
         for item in text_data:
             text_surface = self.font.render(item["text"], True, item["color"])
@@ -640,7 +381,7 @@ if __name__=="__main__":
                 sys.exit()
             # Get keyboard input for movement
 
-        DISPLAYSURF.fill(BLACK)
+        DISPLAYSURF.fill(c.BLACK)
 
         #ARINCBOARD.ReadDataWords(EICASSENSOR)
         EICAS.draw(DISPLAYSURF)
@@ -654,4 +395,4 @@ if __name__=="__main__":
         pygame.display.flip()
 
         pygame.display.update()
-        FramePerSec.tick(FPS)
+        FramePerSec.tick(c.FPS)
