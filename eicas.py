@@ -3,8 +3,8 @@ import pygame, sys
 from pygame.locals import *
 import pygame.gfxdraw
 from Graphics import GFXDrawCircleSprite
-#import spidev
-#import RPi.GPIO as GPIO
+import spidev
+import RPi.GPIO as GPIO
 import time
 import sys
 
@@ -18,33 +18,33 @@ FramePerSec = pygame.time.Clock()
 #SPI Configuration 
 # Use BCM pi mode for compatibility
 # If you switch to BOARD mode be sure to change pin numbers
-#GPIO.setmode(GPIO.BCM)
+GPIO.setmode(GPIO.BCM)
 
 # PIN 27 - READY: Goes high when post initialization is complete
 # PIN 22 - MRST: Rests the HI-3220 Must Asset Low for a minimum of 225 ns
 # PIN 17 - RUN: Enables the transmit and receive schedulers
-#GPIO.setup(27, GPIO.IN)
-#GPIO.setup(22, GPIO.OUT)
-#GPIO.setup(17, GPIO.OUT)
+GPIO.setup(27, GPIO.IN)
+GPIO.setup(22, GPIO.OUT)
+GPIO.setup(17, GPIO.OUT)
 
 # Configues SPI. This is configured for MODE 0 CPOL and CPHA 0
 # Data sampled on rising edge and shifted out on falling edge
 # This uses the default SPIN pins onthe rpi
-# = spidev.SpiDev()
-#spi.open(0,0)
-#spi.mode = 0b00
-#spi.max_speed_hz = 1200000
+spi = spidev.SpiDev()
+spi.open(0,0)
+spi.mode = 0b00
+spi.max_speed_hz = 1200000
 
 DISPLAYSURF = pygame.display.set_mode((c.SCREEN_WIDTH, c.SCREEN_HEIGHT))
 DISPLAYSURF.fill(c.BLACK)
 pygame.display.set_caption("EICAS")
 pygame.mouse.set_visible(True)
 
-'''
+
 class ARINC():
-    self.ready = False
-    self.false = False
-    self.chipSetup = False
+    ready = False
+    false = False
+    chipSetup = False
 
     def __init__(self):
         #Script state machine logic
@@ -59,8 +59,8 @@ class ARINC():
         spi.xfer2([0xE0,0x20,0x00])
         spi.xfer2([0x98,0x80,0x00])
         spi.xfer2([0x88,0xC0])
-        mcr_read = spi.xfer2([0x80,0x00])
-        formatResponse(mcr_reply, "0xC0 Activates Tx and Rx in MCR")
+        mcr_reply = spi.xfer2([0x80,0x00])
+        self.formatResponse(mcr_reply, "0xC0 Activates Tx and Rx in MCR")
 
         if GPIO.input(27):
             GPIO.output(17, GPIO.HIGH)
@@ -77,8 +77,8 @@ class ARINC():
             # Check 
             mcr_reply = spi.xfer2([0x04,0x00]) # Desired is 192 dec or C0 which is tx and rx active
             msr_reply = spi.xfer2([0x08,0x00]) #Desired is 48 dec or 30 hex which is ready and active
-            formatResponse(mcr_reply, "MCR State Should be 0xC0")
-            formatResponse(msr_reply, "MSR State Should be 0x30")
+            self.formatResponse(mcr_reply, "MCR State Should be 0xC0")
+            self.formatResponse(msr_reply, "MSR State Should be 0x30")
 
             zeroStatus = self.enableRxRegister(0)
             oneStatus = self.enableRxRegister(1)
@@ -93,14 +93,14 @@ class ARINC():
                 print(f"Chip Setup Complete")
                 self.chipSetup == True
 
-    def resetChip():
+    def resetChip(self):
         #Reset chip
         GPIO.output(22, GPIO.LOW)
         time.sleep(.5)
         GPIO.output(22, GPIO.HIGH)
         return
 
-    def enableRxRegister(registerNum):
+    def enableRxRegister(self, registerNum):
         if 0 <= registerNum <= 15:
             reg = 0x20 + (registerNum & 0x0F)
             spi.xfer2([0x98,0x80,reg])
@@ -113,7 +113,7 @@ class ARINC():
         else:
             return False
 
-    def enableAllRx():
+    def enableAllRx(self):
         for i in range(16):
             spi.xfer2([0x98,0x80,(0x20 + (i & 0x0F))])
             spi.xfer2([0x88,0x82])
@@ -122,11 +122,11 @@ class ARINC():
                 return False
         return True
 
-    def formatResponse(data, msg):
+    def formatResponse(self, data, msg):
         hex_list = list(map(hex, data))
         print(f"{msg} {hex_list}")
 
-    def enableTxRegister(registerNum):
+    def enableTxRegister(self, registerNum):
         if 0 <= registerNum <= 7:
             reg = 0x30 + (registerNum & 0x07)
             spi.xfer2([0x98,0x80,reg])
@@ -135,7 +135,7 @@ class ARINC():
         else:
             return False
 
-    def enableAllTx():
+    def enableAllTx(self):
         for i in range(8):
             spi.xfer2([0x98,0x80,(0x30 + (i & 0x07))])
             spi.xfer2([0x88,0x02])
@@ -144,53 +144,65 @@ class ARINC():
                 return False
         return True
 
-    def Write_MAP(upper,lower):
+    def Write_MAP(self, upper,lower):
         rdilut = spi.xfer2([0x98,upper,lower])
 
-    def swap32(i):
+    def swap32(self, i):
         return struct.unpack("<I", struct.pack(">I", i))[0]
 
-    def reverse(lst):
+    def reverse(self, lst):
         new_lst = lst[::-1]
         return new_lst
 
-    def convert(word):
+    def convert(self, word):
         return(binascii.hexlify(bytearray(word)))
 
     def ReadDataWords(self, sensorpack):
         spi.xfer2([0x98,0x80,0x0D])
         ch0rxreg = spi.xfer2([0x80,0x00,0x00])
         threshold = ch0rxreg[1] + ch0rxreg[2]
-        formatResponse(ch0rxreg, "Rx 0 Threshold Value Register:")
+        #self.formatResponse(ch0rxreg, "Rx 0 Threshold Value Register:")
 
         spi.xfer2([0x98,0x80,0x68])
         ch0rxcnt = spi.xfer2([0x80,0x00,0x00])
         datawordcnt = ch0rxcnt[1]
+        #print(f"Rx 0 Threshold Value Register:{datawordcnt}")
 
         if datawordcnt > 0:
+            sensorpack.FadecStatus = True
             for i in range(datawordcnt):
                 dataword = spi.xfer2([0xC0,0x00,0x00,0x00,0x00,0x00])
-                label = oct(int('{:08b}'.format(dataword[2])[::-1], 2))
+                #label = oct(int('{:08b}'.format(dataword[2])[::-1], 2))
+                label = oct(dataword[2])
                 label = label.replace('0o','')
+                #print(f"Label: {label} {dataword[3]} {dataword[4]} {dataword[5]}")
 
                 #print(label)
                 match label:
                     #Subsystem Identifier sent every one second
                     #Identifies the avionics component
                     # The ssi becomes the label that will be returned from the MCDU
-                    case "072":
-                        side = int(dataword[3]) & 0x20
+                    case "72":
+                        #print(f"Case 072")
+                        side = int(dataword[3]) & 0x1
                         if side > 0:
-                            sensorpack.n1LeftVal = ((dataword[3] & 0x1f) << 8) + dataword[4]
+                            sensorpack.n1LeftVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
                         else:
-                            sensorpack.n1RightVal = ((dataword[3] & 0x1f) << 8) + dataword[4]
+                            sensorpack.n1RightVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
                     case "321":
-                        side = int(dataword[3]) & 0x20
+                        side = int(dataword[3]) & 0x1
                         if side > 0:
-                            sensorpack.egtLeftVal = ((dataword[3] & 0x1f) << 8) + dataword[4]
+                            sensorpack.egtLeftVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
                         else:
-                            sensorpack.egtRightVal = ((dataword[3] & 0x1f) << 8) + dataword[4]
-'''
+                            sensorpack.egtRightVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                    case "344":
+                        side = int(dataword[3]) & 0x1
+                        if side > 0:
+                            print(f"Case 344 Left Side")
+                            sensorpack.n2LeftVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                        else:
+                            print(f"Case 344 Right Side")
+                            sensorpack.n2RightVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
 
 class SensorPack():
     #self.n1LeftVal = 100.0
@@ -220,7 +232,6 @@ class SensorPack():
         return(self.tat)
 
     def readFadecStatus(self):
-        self.FadecStatus = True
         return(self.FadecStatus)
 
     def readN1Left(self):
@@ -236,15 +247,9 @@ class SensorPack():
         return(self.egtRightVal)
 
     def readN2Left(self):
-        self.n2LeftVal += 1
-        if self.n2LeftVal > 100:
-            self.n2LeftVal = 1
         return(self.n2LeftVal)
 
     def readN2Right(self):
-        self.n2RightVal += 1
-        if self.n2RightVal > 100:
-            self.n2RightVal = 1
         return(self.n2RightVal)
 
     def readFFULeft(self):
@@ -372,7 +377,7 @@ if __name__=="__main__":
     EICAS = GFXDrawCircleSprite()
     EICASTEXT = TextElement()
     EICASSENSOR = SensorPack()
-    #ARINCBOARD = ARINC()
+    ARINCBOARD = ARINC()
 
     while True:     
         for event in pygame.event.get():              
@@ -383,7 +388,7 @@ if __name__=="__main__":
 
         DISPLAYSURF.fill(c.BLACK)
 
-        #ARINCBOARD.ReadDataWords(EICASSENSOR)
+        ARINCBOARD.ReadDataWords(EICASSENSOR)
         EICAS.draw(DISPLAYSURF)
         EICASTEXT.drawScreenLabels(DISPLAYSURF)
         EICASTEXT.drawDialNums(DISPLAYSURF)
