@@ -86,15 +86,21 @@ class GFXDrawCircleSprite():
 
         # Oil and Vibration
         # Oil Pressure Left
-        pygame.gfxdraw.arc(screen, c.col_three, c.row_one, c.RADIUS2, 40, 320, c.WHITE)
-        pygame.gfxdraw.pie(screen, c.col_three, c.row_one, c.RADIUS2+10, 40, 40, c.WHITE)
+        pygame.gfxdraw.arc(screen, c.col_three, c.row_one, c.RADIUS2, 100, 320, c.WHITE)
+        pygame.gfxdraw.arc(screen, c.col_three, c.row_one, c.RADIUS2, 40, 70, c.RED)
+        pygame.gfxdraw.arc(screen, c.col_three, c.row_one, c.RADIUS2, 70, 100, c.YELLOW)
+        pygame.gfxdraw.pie(screen, c.col_three, c.row_one, c.RADIUS2+10, 40, 40, c.RED)
         pygame.gfxdraw.pie(screen, c.col_three, c.row_one, c.RADIUS2+10, 320, 320, c.WHITE)
+        pygame.gfxdraw.hline(screen, (c.col_three - c.RADIUS2), (c.col_three - c.RADIUS2 - 5), c.row_one, c.WHITE)
         pygame.gfxdraw.filled_trigon(screen, c.col_three, c.row_one, c.col_three+25, c.row_one+24, c.col_three+25, c.row_one-24, c.BLACK)
 
         # Oil Pressure Right
-        pygame.gfxdraw.arc(screen, c.col_four, c.row_one, c.RADIUS2, 40, 320, c.WHITE)
-        pygame.gfxdraw.pie(screen, c.col_four, c.row_one, c.RADIUS2+10, 40, 40, c.WHITE)
+        pygame.gfxdraw.arc(screen, c.col_four, c.row_one, c.RADIUS2, 100, 320, c.WHITE)
+        pygame.gfxdraw.arc(screen, c.col_four, c.row_one, c.RADIUS2, 40, 70, c.RED)
+        pygame.gfxdraw.arc(screen, c.col_four, c.row_one, c.RADIUS2, 70, 100, c.YELLOW)
+        pygame.gfxdraw.pie(screen, c.col_four, c.row_one, c.RADIUS2+10, 40, 40, c.RED)
         pygame.gfxdraw.pie(screen, c.col_four, c.row_one, c.RADIUS2+10, 320, 320, c.WHITE)
+        pygame.gfxdraw.hline(screen, (c.col_four - c.RADIUS2), (c.col_four - c.RADIUS2 - 5), c.row_one, c.WHITE)
         pygame.gfxdraw.filled_trigon(screen, c.col_four, c.row_one, c.col_four+25, c.row_one+24, c.col_four+25, c.row_one-24, c.BLACK)
 
         # Oil Temp Left
@@ -117,16 +123,16 @@ class GFXDrawCircleSprite():
 
         # Hydraulic Pressure and Quantity
         # Hyd Press Left
-        pygame.gfxdraw.arc(screen, c.col_three, c.row_six, c.RADIUS1, 40, 320, c.WHITE)
+        pygame.gfxdraw.arc(screen, c.col_three, c.row_five, c.RADIUS1, 40, 320, c.WHITE)
 
         # Hyd Press Right
-        pygame.gfxdraw.arc(screen, c.col_four, c.row_six, c.RADIUS1, 40, 320, c.WHITE)
+        pygame.gfxdraw.arc(screen, c.col_four, c.row_five, c.RADIUS1, 40, 320, c.WHITE)
 
         # Hyd Quantity Left
-        pygame.gfxdraw.rectangle(screen, (c.col_three, c.row_six, 60, 40), c.WHITE)
+        pygame.gfxdraw.rectangle(screen, (c.col_three-30, c.row_six-20, 60, 40), c.WHITE)
 
         # Hyd Quantity Right
-        pygame.gfxdraw.rectangle(screen, (c.col_four, c.row_six, 60, 40), c.WHITE)
+        pygame.gfxdraw.rectangle(screen, (c.col_four-30, c.row_six-20, 60, 40), c.WHITE)
 
         # Fuel Quantity and Balance
         # Fuel Left
@@ -188,18 +194,19 @@ class GFXDrawCircleSprite():
 
         # Oil and Vibration
         # Oil Pressure Left
-        dial = round(self.dialScale(sensors.readN2Left(), 0, 100, 40, 320))
+        dial = round(self.dialScale(sensors.readOilPLeft(), 0, 100, 40, 320))
         pygame.gfxdraw.pie(screen, c.col_three, c.row_one, c.RADIUS2, dial, dial, c.WHITE)
 
 
         # Oil Pressure Right
-        pygame.gfxdraw.arc(screen, c.col_four, c.row_one, 35, 40, 320, c.WHITE)
+        dial = round(self.dialScale(sensors.readOilPRight(), 0, 100, 40, 320))
+        pygame.gfxdraw.pie(screen, c.col_four, c.row_one, c.RADIUS2, dial, dial, c.WHITE)
 
         # Oil Temp Left
-        pygame.gfxdraw.arc(screen, c.col_three, c.row_two, 35, 40, 320, c.WHITE)
+        #pygame.gfxdraw.arc(screen, c.col_three, c.row_two, 35, 40, 320, c.WHITE)
 
         # Oil Temp Right
-        pygame.gfxdraw.arc(screen, c.col_four, c.row_two, 35, 40, 320, c.WHITE)
+        #pygame.gfxdraw.arc(screen, c.col_four, c.row_two, 35, 40, 320, c.WHITE)
 
         # Vibration Left
         dial = round(self.dialScale(sensors.readN2Left(), 0, 100, 110, 370))
@@ -211,10 +218,10 @@ class GFXDrawCircleSprite():
 
         # Hydraulic Pressure and Quantity
         # Hyd Press Left
-        pygame.gfxdraw.arc(screen, c.col_three, c.row_five, 55, 40, 320, c.WHITE)
+        #pygame.gfxdraw.arc(screen, c.col_three, c.row_five, 55, 40, 320, c.WHITE)
 
         # Hyd Press Right
-        pygame.gfxdraw.arc(screen, c.col_four, c.row_five, 55, 40, 320, c.WHITE)
+        #pygame.gfxdraw.arc(screen, c.col_four, c.row_five, 55, 40, 320, c.WHITE)
 
 
         # Fuel Quantity and Balance
@@ -223,7 +230,7 @@ class GFXDrawCircleSprite():
         pygame.gfxdraw.pie(screen, c.col_one, c.row_six, c.RADIUS2+10, dial, dial, c.WHITE)
 
         # Fuel Center
-        dial = round(self.dialScale(sensors.readCenterTank(), 0, 10000, 140, 395))
+        dial = round(self.dialScale(sensors.readCenterTank(), 0, 12000, 140, 395))
         pygame.gfxdraw.pie(screen, c.quarter, (c.row_six - 60), c.RADIUS2+20, dial, dial, c.WHITE)
 
         # Fuel Right
