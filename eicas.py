@@ -45,6 +45,7 @@ class ARINC():
     ready = False
     false = False
     chipSetup = False
+    start_countdown = False
 
     def __init__(self):
         #Script state machine logic
@@ -52,6 +53,8 @@ class ARINC():
         self.ready = False
         self.false = False
         self.chipSetup = False
+        self.start_countdown = False
+        self.check_time = time.perf_counter()
 
         #Initial chip reset
         self.resetChip()
@@ -168,7 +171,9 @@ class ARINC():
         datawordcnt = ch0rxcnt[1]
         #print(f"Rx 0 Threshold Value Register:{datawordcnt}")
 
+
         if datawordcnt > 0:
+            self.start_countdown = False
             sensorpack.FadecStatus = True
             for i in range(datawordcnt):
                 dataword = spi.xfer2([0xC0,0x00,0x00,0x00,0x00,0x00])
@@ -198,11 +203,43 @@ class ARINC():
                     case "344":
                         side = int(dataword[3]) & 0x1
                         if side > 0:
-                            print(f"Case 344 Left Side")
+                            #print(f"Case 344 Left Side")
                             sensorpack.n2LeftVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
                         else:
-                            print(f"Case 344 Right Side")
+                            #print(f"Case 344 Right Side")
                             sensorpack.n2RightVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                    case "255":
+                        side = int(dataword[3]) & 0x03
+                        if side == 0:
+                            #print(f"Case 255 Fuel Center")
+                            sensorpack.CenterTank = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                        elif side == 1:
+                            #print(f"Case 255 Fuel Left")
+                            sensorpack.LeftTank = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                        elif side == 2:
+                            #print(f"Case 255 Fuel Right")
+                            sensorpack.RightTank = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                    case "317":
+                        side = int(dataword[3]) & 0x1
+                        if side > 0:
+                            #print(f"Case 317 Left Side")
+                            sensorpack.oilPLeftVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                        else:
+                            #print(f"Case 317 Right Side")
+                            sensorpack.oilPRightVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+
+        else:
+            if self.start_countdown == False:
+                #print(f"No data received.Starting Countdown")
+                self.check_time = time.perf_counter()
+            self.start_countdown = True
+
+        if self.start_countdown:
+            
+            now_time = time.perf_counter()
+            if ((now_time - self.check_time) >= 5):
+                sensorpack.resetData()
+                #print(f"Resetting Data")
 
 class SensorPack():
     #self.n1LeftVal = 100.0
@@ -224,9 +261,28 @@ class SensorPack():
         self.n2RightVal = 100.0
         self.FFULeftVal = 3.0
         self.FFURightVal = 3.0
-        self.CenterTank = 10000
+        self.CenterTank = 12000
         self.LeftTank = 3000
         self.RightTank = 3000
+        self.oilPLeftVal = 0.0
+        self.oilPRightVal = 0.0
+
+    def resetData(self):
+        self.tat = 22.0
+        self.FadecStatus = False
+        self.n1LeftVal = 0.0
+        self.n1RightVal = 0.0
+        self.egtLeftVal = 0
+        self.egtRightVal = 0
+        self.n2LeftVal = 0.0
+        self.n2RightVal = 0.0
+        self.FFULeftVal = 0.0
+        self.FFURightVal = 0.0
+        self.CenterTank = 12000
+        self.LeftTank = 3000
+        self.RightTank = 3000
+        self.oilPLeftVal = 0.0
+        self.oilPRightVal = 0.0
 
     def readTAT(self):
         return(self.tat)
@@ -259,23 +315,19 @@ class SensorPack():
         return(self.FFURightVal)
 
     def readCenterTank(self):
-        self.CenterTank += 10
-        if self.CenterTank > 10000:
-            self.CenterTank = 1
         return(self.CenterTank)
 
     def readLeftTank(self):
-        self.LeftTank += 10
-        if self.LeftTank > 3000:
-            self.LeftTank = 1
         return(self.LeftTank)
 
     def readRightTank(self):
-        self.RightTank += 20
-        if self.RightTank > 3000:
-            self.RightTank = 1
         return(self.RightTank)
 
+    def readOilPLeft(self):
+        return(self.oilPLeftVal)
+
+    def readOilPRight(self):
+        return(self.oilPRightVal)
 
 
 
@@ -287,7 +339,7 @@ class TextElement:
         self.font = pygame.font.SysFont("Arial", 20)
 
         text_data = [
-        {"text": "TAT", "color": c.BLUE, "pos": (260, 20)},
+        {"text": "TAT", "color": c.BLUE, "pos": (250, 20)},
         {"text": "FADEC ENABLED", "color": c.BLUE, "pos": (560, 20)},
         {"text": "N1", "color": c.GREEN, "pos": (c.quarter, c.row_one+50)},
         {"text": "EGT", "color": c.GREEN, "pos": (c.quarter, c.row_two+50)},
@@ -297,7 +349,7 @@ class TextElement:
         {"text": "OIL T", "color": c.GREEN, "pos": (c.t_quarter, c.row_two+30)},
         {"text": "OIL Q%", "color": c.GREEN, "pos": (c.t_quarter, c.row_three+30)},
         {"text": "VIB", "color": c.GREEN, "pos": (c.t_quarter, c.row_four+30)},
-        {"text": "HYD P", "color": c.GREEN, "pos": (c.t_quarter, (c.row_six - 40))},
+        {"text": "HYD P", "color": c.GREEN, "pos": (c.t_quarter, (c.row_six-60))},
         {"text": "HYD Q", "color": c.GREEN, "pos": (c.t_quarter, c.row_six)},
         {"text": "FUEL KG", "color": c.GREEN, "pos": (c.quarter, (c.hl_y_divider + 30))}
         ]
@@ -310,7 +362,7 @@ class TextElement:
         self.font = pygame.font.SysFont("Arial", 24)
 
         text_data = [
-        {"text": str(round(sensor.readTAT(),1)), "color": c.WHITE, "pos": (320, 6)},
+        {"text": str(round(sensor.readTAT(),1)), "color": c.WHITE, "pos": (330, 6)},
         {"text": str(round(sensor.readN1Left(),1)), "color": c.WHITE, "pos": (c.col_one + c.RADIUS1 + 8, c.row_one - c.RADIUS1)},
         {"text": str(round(sensor.readN1Right(),1)), "color": c.WHITE, "pos": (c.col_two + c.RADIUS1 + 8, c.row_one - c.RADIUS1)},
         {"text": str(sensor.readEgtLeft()), "color": c.WHITE, "pos": (c.col_one + c.RADIUS1 + 8, c.row_two - c.RADIUS1)},
@@ -346,8 +398,8 @@ class TextElement:
         {"text": "IMBALANCE", "color": WARN, "pos": (c.col_one, c.row_six + 35)},
         {"text": "IMBALANCE", "color": WARN, "pos": (c.col_two, c.row_six + 35)},
         {"text": str(sensor.readCenterTank()), "color": c.WHITE, "pos": (c.quarter, c.row_six - 65)},
-        {"text": str(sensor.readRightTank()), "color": WARN_TEXT, "pos": (c.col_one, c.row_six - 5)},
-        {"text": str(sensor.readLeftTank()), "color": WARN_TEXT, "pos": (c.col_two, c.row_six - 5)}
+        {"text": str(sensor.readRightTank()), "color": WARN_TEXT, "pos": (c.col_two, c.row_six - 5)},
+        {"text": str(sensor.readLeftTank()), "color": WARN_TEXT, "pos": (c.col_one, c.row_six - 5)}
         ]
 
         for item in text_data:
@@ -366,7 +418,9 @@ class TextElement:
         {"text": "1", "color": c.WHITE, "pos": (c.col_one + c.RADIUS1 + 2, c.row_three)},
         {"text": "1", "color": c.WHITE, "pos": (c.col_two + c.RADIUS1 + 2, c.row_three)},
         {"text": "1", "color": c.WHITE, "pos": (c.col_one + c.RADIUS1 + 2, c.row_four)},
-        {"text": "1", "color": c.WHITE, "pos": (c.col_two + c.RADIUS1 + 2, c.row_four)}
+        {"text": "1", "color": c.WHITE, "pos": (c.col_two + c.RADIUS1 + 2, c.row_four)},
+        {"text": "50", "color": c.WHITE, "pos": (c.col_three - c.RADIUS2 + 2, c.row_one-6)},
+        {"text": "50", "color": c.WHITE, "pos": (c.col_four - c.RADIUS2 + 2, c.row_one-6)}
         ]
         for item in text_data:
             text_surface = self.font.render(item["text"], True, item["color"])
