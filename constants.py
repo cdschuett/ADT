@@ -9,10 +9,12 @@ BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 YELLOW = (255, 255, 0)
 PURPLE = (128, 0, 128)
+GREY = (128, 128, 128)
 
 # Screen dimensions
 SCREEN_WIDTH = 720
 SCREEN_HEIGHT = 1000
+SQUARE_SIZE = 40
 RADIUS1 = 55
 RADIUS2 = 35
 #Alignment Vectors
