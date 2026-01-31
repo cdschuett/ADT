@@ -35,7 +35,8 @@ spi.open(0,0)
 spi.mode = 0b00
 spi.max_speed_hz = 1200000
 
-DISPLAYSURF = pygame.display.set_mode((c.SCREEN_WIDTH, c.SCREEN_HEIGHT))
+#DISPLAYSURF = pygame.display.set_mode((c.SCREEN_WIDTH, c.SCREEN_HEIGHT))
+DISPLAYSURF = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
 DISPLAYSURF.fill(c.BLACK)
 pygame.display.set_caption("EICAS")
 pygame.mouse.set_visible(True)
