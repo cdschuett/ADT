@@ -11,6 +11,8 @@ int menuOption = 0;
 int menuChoice = 0;
 pid_t eicas_pid = -1;
 pid_t test_pid = -1;
+pid_t stop_eicas_pid = -1;
+pid_t stop_test_pid = -1;
 
 void log_message(const char* message)
 {
@@ -36,86 +38,54 @@ void log_message(const char* message)
 
 void start_eicas()
 {
-    eicas_pid = fork();
-    if (eicas_pid == -1)
-    {
-        log_message("EICAS process start failure.");
-        exit(EXIT_FAILURE);
-    }
-    else if (eicas_pid == 0)
-    {
-        execlp("python", "python", "/home/pi/Documents/py_test/ADT/eicas.py", (char *) NULL);
-        log_message("EICAS execution failure.");
-        exit(EXIT_FAILURE);
-    }
-    else
-    {
-        char buffer[100];
-        snprintf(buffer, sizeof(buffer), "EICAS started with PID: %d\n", eicas_pid);
-        log_message(buffer); 
-    }
+    system("/home/pi/Documents/py_test/ADT/start.sh");
+    log_message("EICAS execution start.");
 }
 
 void stop_eicas()
 {
-    if (eicas_pid != 0)
-    {
-        if (kill(eicas_pid, SIGTERM) == 0)
-        {
-            log_message("EICAS exited.");
-        }
-        else
-        {
-            log_message("EICAS termination failed."); 
-        }
-    }
-    else
-    {
-        log_message("EICAS not running.");
-    }
+    system("/home/pi/Documents/py_test/ADT/stop_eicas.sh");
+    log_message("EICAS execution stop.");
 }
 
 void start_test()
 {
-    test_pid = fork();
-    if (test_pid == -1)
+    system("/home/pi/Documents/py_test/ADT/test.sh");
+    log_message("TEST execution start.");
+}
+
+void stop_test()
+{
+    system("/home/pi/Documents/py_test/ADT/stop_test.sh");
+    log_message("TEST execution start.");
+}
+
+
+/*
+ * Keeping for reference
+void stop_test()
+{
+    stop_test_pid = fork();
+    if (stop_test_pid == -1)
     {
-        log_message("Test pattern process start failure.");
+        log_message("TEST process stop failure.");
         exit(EXIT_FAILURE);
     }
-    else if (test_pid == 0)
+    else if (eicas_pid == 0)
     {
-        execlp("python", "python", "/home/pi/Documents/py_test/ADT/test_pattern.py", (char *) NULL);
-        log_message("Test pattern execution failure.");
+        //execlp("python", "python", "/home/pi/Documents/py_test/ADT/eicas.py", (char *) NULL);
+        execlp("/home/pi/Documents/py_test/ADT/stop_test.sh", "/home/pi/Documents/py_test/ADT/stop_test.sh", (char *) NULL);
+        log_message("TEST termination failure.");
         exit(EXIT_FAILURE);
     }
     else
     {
         char buffer[100];
-        snprintf(buffer, sizeof(buffer), "Test pattern started with PID: %d\n", test_pid);
+        snprintf(buffer, sizeof(buffer), "TEST stopped with PID: %d\n", stop_eicas_pid);
         log_message(buffer); 
     }
 }
-
-void stop_test()
-{
-    if (test_pid != 0)
-    {
-        if (kill(test_pid, SIGTERM) == 0)
-        {
-            log_message("Test exited.");
-        }
-        else
-        {
-            log_message("Test termination failed."); 
-        }
-    }
-    else
-    {
-        log_message("Test not running.");
-    }
-}
-
+*/
 
 
 int choice()
@@ -136,6 +106,7 @@ int menuDisplay(int screen)
     switch(screen)
     {
         case 0:
+            system("clear");
             puts("===============================================");
             puts("              MAINTENANCE DISPLAY              ");
             puts("===============================================");
@@ -152,6 +123,7 @@ int menuDisplay(int screen)
             menuOption = puts("SELECT YOUR OPTION: ");
             break;
         case 1:
+            system("clear");
             stop_eicas();
             puts("===============================================");
             puts("              MAINTENANCE DISPLAY              ");
@@ -169,6 +141,7 @@ int menuDisplay(int screen)
             menuOption = puts("SELECT YOUR OPTION: ");
             break;
         case 2:
+            system("clear");
             start_test();
             puts("===============================================");
             puts("              MAINTENANCE DISPLAY              ");
@@ -177,8 +150,43 @@ int menuDisplay(int screen)
             puts("REGISTRATION NUMBER: \t\tN1337                 ");
             putchar(10);
             putchar(10);
-            puts("START EICAS\t\t(6)                             ");
+            puts("START EICAS\t\t\t(6)                             ");
+            puts("STOP TEST PATTERN\t\t(7)                            ");
+            puts("SOFTWARE PART VERIFICATION\t(3)                ");
+            puts("SOFTWARE PART UPDATE\t      (4)                ");
+            puts("SOFTWARE PART MANIFEST\t    (5)                ");
+            putchar(10);
+            menuOption = puts("SELECT YOUR OPTION: ");
+            break;
+        case 6:
+            system("clear");
+            start_eicas();
+            puts("===============================================");
+            puts("              MAINTENANCE DISPLAY              ");
+            puts("===============================================");
+            puts("STARTING: \t\t\tEICAS                          ");
+            puts("REGISTRATION NUMBER: \t\tN1337                 ");
+            putchar(10);
+            putchar(10);
+            puts("STOP EICAS\t\t(1)                             ");
             puts("TEST PATTERN\t\t(2)                            ");
+            puts("SOFTWARE PART VERIFICATION\t(3)                ");
+            puts("SOFTWARE PART UPDATE\t      (4)                ");
+            puts("SOFTWARE PART MANIFEST\t    (5)                ");
+            putchar(10);
+            menuOption = puts("SELECT YOUR OPTION: ");
+            break;
+        case 7:
+            system("clear");
+            stop_test();
+            puts("===============================================");
+            puts("              MAINTENANCE DISPLAY              ");
+            puts("===============================================");
+            puts("STARTING: \t\t\tEICAS                          ");
+            puts("REGISTRATION NUMBER: \t\tN1337                 ");
+            putchar(10);
+            putchar(10);
+            puts("START EICAS\t\t(1)                             ");
             puts("SOFTWARE PART VERIFICATION\t(3)                ");
             puts("SOFTWARE PART UPDATE\t      (4)                ");
             puts("SOFTWARE PART MANIFEST\t    (5)                ");
@@ -194,7 +202,7 @@ int main()
     {
         if (initial)
         {
-            start_eicas();
+            //start_eicas();
             menuChoice = 0;
             initial = false;
             system("clear");

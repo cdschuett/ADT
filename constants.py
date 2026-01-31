@@ -1,3 +1,5 @@
+import pygame
+
 #Framerate
 FPS = 24
 
@@ -12,8 +14,13 @@ PURPLE = (128, 0, 128)
 GREY = (128, 128, 128)
 
 # Screen dimensions
-SCREEN_WIDTH = 720
-SCREEN_HEIGHT = 1000
+#SCREEN_WIDTH = 720
+#SCREEN_HEIGHT = 1000
+pygame.display.init()
+infoObject = pygame.display.Info()
+SCREEN_WIDTH = infoObject.current_w
+SCREEN_HEIGHT = infoObject.current_h
+
 SQUARE_SIZE = 40
 RADIUS1 = 55
 RADIUS2 = 35
