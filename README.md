@@ -39,3 +39,8 @@ ARINC_Engine.ino is the arduino sketch file for the transmitter. This is probabl
 test_pattern.py is a simple test pattern script.
 
 Everything is built around pygame
+
+Python files are signed
+Verify the file signature
+openssl base64 -d -in eicas_signature.asc -out /tmp/eicas_sign.sha256
+openssl dgst -sha256 -verify ~/.identity/acft_id_public.pem -signature /tmp/eicas_sign.sha256 eicas.py
