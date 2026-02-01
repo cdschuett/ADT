@@ -60,6 +60,34 @@ void stop_test()
     log_message("TEST execution start.");
 }
 
+void verification()
+{
+    system("/home/pi/Documents/py_test/ADT/verify.sh");
+    log_message("Part verification executed.");
+
+    char line[1000];
+    FILE *fptr = fopen("/home/pi/Documents/py_test/ADT/verification_results.txt", "r");
+    
+    if (fptr == NULL)
+    {
+        perror("Error opening results file");
+        return;
+    }
+    printf("\n---Contents of Verification---\n");
+    while (fgets(line, sizeof(line), fptr) != NULL)
+    {
+        printf("%s", line);
+    }
+    printf("------------------------------\n");
+    printf("Press a key to continue...\n");
+    getchar();
+    getchar();
+
+    fclose(fptr);
+    system("clear");
+    return;
+}
+
 
 /*
  * Keeping for reference
@@ -114,11 +142,11 @@ int menuDisplay(int screen)
             puts("REGISTRATION NUMBER: \t\tN1337                 ");
             putchar(10);
             putchar(10);
-            puts("DISABLE EICAS\t\t(1)                           ");
-            puts("TEST PATTERN\t\t(2)                            ");
-            puts("SOFTWARE PART VERIFICATION\t(3)                ");
-            puts("SOFTWARE PART UPDATE\t      (4)                ");
-            puts("SOFTWARE PART MANIFEST\t    (5)                ");
+            puts("DISABLE EICAS\t\t\t(1)");
+            puts("TEST PATTERN\t\t\t(2)");
+            puts("SOFTWARE PART VERIFICATION\t(3)");
+            puts("SOFTWARE PART UPDATE\t\t(4)");
+            puts("SOFTWARE PART MANIFEST\t\t(5)");
             putchar(10);
             menuOption = puts("SELECT YOUR OPTION: ");
             break;
@@ -132,11 +160,11 @@ int menuDisplay(int screen)
             puts("REGISTRATION NUMBER: \t\tN1337                 ");
             putchar(10);
             putchar(10);
-            puts("START EICAS\t\t(6)                             ");
-            puts("TEST PATTERN\t\t(2)                            ");
-            puts("SOFTWARE PART VERIFICATION\t(3)                ");
-            puts("SOFTWARE PART UPDATE\t      (4)                ");
-            puts("SOFTWARE PART MANIFEST\t    (5)                ");
+            puts("START EICAS\t\t\t(6)");
+            puts("TEST PATTERN\t\t\t(2)");
+            puts("SOFTWARE PART VERIFICATION\t(3)");
+            puts("SOFTWARE PART UPDATE\t\t(4)");
+            puts("SOFTWARE PART MANIFEST\t\t(5)");
             putchar(10);
             menuOption = puts("SELECT YOUR OPTION: ");
             break;
@@ -150,11 +178,26 @@ int menuDisplay(int screen)
             puts("REGISTRATION NUMBER: \t\tN1337                 ");
             putchar(10);
             putchar(10);
-            puts("START EICAS\t\t\t(6)                             ");
-            puts("STOP TEST PATTERN\t\t(7)                            ");
-            puts("SOFTWARE PART VERIFICATION\t(3)                ");
-            puts("SOFTWARE PART UPDATE\t      (4)                ");
-            puts("SOFTWARE PART MANIFEST\t    (5)                ");
+            puts("START EICAS\t\t\t(6)");
+            puts("STOP TEST PATTERN\t\t(7)");
+            puts("SOFTWARE PART VERIFICATION\t(3)");
+            puts("SOFTWARE PART UPDATE\t\t(4)");
+            puts("SOFTWARE PART MANIFEST\t\t(5)");
+            putchar(10);
+            menuOption = puts("SELECT YOUR OPTION: ");
+            break;
+        case 3:
+            system("clear");
+            verification();
+            puts("===============================================");
+            puts("              MAINTENANCE DISPLAY              ");
+            puts("===============================================");
+            puts("REGISTRATION NUMBER: \t\tN1337                 ");
+            putchar(10);
+            putchar(10);
+            puts("RETURN TO MAIN MENU\t(0)");
+            puts("SOFTWARE PART UPDATE\t(4)");
+            puts("SOFTWARE PART MANIFEST\t(5)");
             putchar(10);
             menuOption = puts("SELECT YOUR OPTION: ");
             break;
