@@ -8,12 +8,12 @@ import RPi.GPIO as GPIO
 import time
 import sys
 
-pygame.init()
-pygame.font.init()
+#pygame.init()
+#pygame.font.init()
 
-font = pygame.font.SysFont('Arial', 30)
+#font = pygame.font.SysFont('Arial', 30)
 
-FramePerSec = pygame.time.Clock()
+#FramePerSec = pygame.time.Clock()
 
 #SPI Configuration 
 # Use BCM pi mode for compatibility
@@ -38,8 +38,8 @@ spi.max_speed_hz = 1200000
 #DISPLAYSURF = pygame.display.set_mode((c.SCREEN_WIDTH, c.SCREEN_HEIGHT))
 DISPLAYSURF = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
 DISPLAYSURF.fill(c.BLACK)
-pygame.display.set_caption("EICAS")
-pygame.mouse.set_visible(True)
+#pygame.display.set_caption("EICAS")
+#pygame.mouse.set_visible(True)
 
 
 class ARINC():
@@ -165,7 +165,7 @@ class ARINC():
         return(binascii.hexlify(bytearray(word)))
 
     def TxMCDUWords(self):
-        spi.xfer2([0xA1, 0xAA, 0xBB, 0xCC, 0xDD])
+        spi.xfer2([0xA1, 0x89, 0x01, 0x01, 0x12])
 
     def ReadMCDUWords(self):
         #0x98 is the address for register access, 0x800D is the Rx 0 Threshold Value Register
@@ -173,19 +173,19 @@ class ARINC():
         #0x80 is the command for reading data, the next two bytes are dummy bytes to clock out the data
         ch0rxreg = spi.xfer2([0x80,0x00,0x00])
         threshold = ch0rxreg[1] + ch0rxreg[2]
-        #self.formatResponse(ch0rxreg, "Rx 0 Threshold Value Register:")
+        self.formatResponse(ch0rxreg, "Read MCDU Rx 2 Threshold Value Register:")
 
-        #0x98 is the address for register access, 0x806A is the Rx 2 FIFO Count 
+        #0x98 is the address for register access, 0x806A is the Rx 2 FIFO Count
         spi.xfer2([0x98,0x80,0x6A])
         ch0rxcnt = spi.xfer2([0x80,0x00,0x00])
         datawordcnt = ch0rxcnt[1]
-        #print(f"Rx 0 Threshold Value Register:{datawordcnt}")
+        print(f"Rx 1 Threshold Value Register:{datawordcnt}")
 
 
         if datawordcnt > 0:
             self.start_countdown = False
             for i in range(datawordcnt):
-                dataword = spi.xfer2([0xC0,0x02,0x00,0x00,0x00,0x00])
+                dataword = spi.xfer2([0xC0,0x20,0x00,0x00,0x00,0x00])
                 #label = oct(int('{:08b}'.format(dataword[2])[::-1], 2))
                 label = oct(dataword[2])
                 label = label.replace('0o','')
@@ -207,12 +207,11 @@ class ARINC():
             self.start_countdown = True
 
         if self.start_countdown:
-            
+
             now_time = time.perf_counter()
             if ((now_time - self.check_time) >= 5):
-                sensorpack.resetData()
-                #print(f"Resetting Data")
-
+                #sensorpack.resetData()
+                print(f"Resetting Data")
 
 if __name__=="__main__":
     ARINCBOARD = ARINC()
@@ -227,7 +226,7 @@ if __name__=="__main__":
         #DISPLAYSURF.fill(c.BLACK)
 
         ARINCBOARD.ReadMCDUWords()
-
+        time.sleep(.5)
 
         # Update the display
         #pygame.display.flip()
