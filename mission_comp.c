@@ -135,6 +135,7 @@ int menuDisplay(int screen)
     {
         case 0:
             system("clear");
+            start_eicas();
             puts("===============================================");
             puts("              MAINTENANCE DISPLAY              ");
             puts("===============================================");

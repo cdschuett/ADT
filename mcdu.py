@@ -35,11 +35,11 @@ spi.open(0,0)
 spi.mode = 0b00
 spi.max_speed_hz = 1200000
 
-#DISPLAYSURF = pygame.display.set_mode((c.SCREEN_WIDTH, c.SCREEN_HEIGHT))
-DISPLAYSURF = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
+DISPLAYSURF = pygame.display.set_mode((c.SCREEN_WIDTH, c.SCREEN_HEIGHT))
+#DISPLAYSURF = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
 DISPLAYSURF.fill(c.BLACK)
-#pygame.display.set_caption("EICAS")
-#pygame.mouse.set_visible(True)
+pygame.display.set_caption("EICAS")
+pygame.mouse.set_visible(True)
 
 
 class ARINC():
@@ -47,6 +47,12 @@ class ARINC():
     false = False
     chipSetup = False
     start_countdown = False
+    #State machine values
+    waitForEnquire = False
+    normalText = True
+    
+    #Static Data
+    functionMenu = [0x91, 0x05, 0x01, 0x02, 0x91, 0x01, 0xf3, 0x01, 0x91, 0x3c, 0x51, 0x45, 0x91, 0x44, 0x20, 0x20, 0x91, 0x00, 0x01, 0x04]
 
     def __init__(self):
         #Script state machine logic
@@ -87,6 +93,7 @@ class ARINC():
             zeroStatus = self.enableRxRegister(0)
             oneStatus = self.enableRxRegister(1)
             twoStatus = self.enableRxRegister(2)
+            threeStatus = self.enableRxRegister(3)
             txOneStatus = self.enableTxRegister(1)
 
 
@@ -96,9 +103,11 @@ class ARINC():
                 spi.xfer2([0x98,0x68,((0x00 + i) & 0xFF)])
                 spi.xfer2([0x88,0xFF])
 
-            if zeroStatus and oneStatus:
+            if zeroStatus and oneStatus and twoStatus:
                 print(f"Chip Setup Complete")
                 self.chipSetup == True
+            else:
+                print(f"Chip Setup Failure")
 
     def resetChip(self):
         #Reset chip
@@ -113,9 +122,11 @@ class ARINC():
             spi.xfer2([0x98,0x80,reg])
             spi.xfer2([0x88,0x82]) # Sets enable flag and lowspeed flag
             write = spi.xfer2([0x80,0x00])
-            if write != 0x82:
+            if write[1] != 0x82:
+                print(f"Receiver {registerNum} Fail {write}")
                 return False
             else:
+                print(f"Receiver {registerNum} Active")
                 return True
         else:
             return False
@@ -138,6 +149,7 @@ class ARINC():
             reg = 0x30 + (registerNum & 0x07)
             spi.xfer2([0x98,0x80,reg])
             spi.xfer2([0x88,0x02]) # Sets enable flag and lowspeed flag
+            print(f"TX {registerNum} Active")
             return True
         else:
             return False
@@ -164,22 +176,28 @@ class ARINC():
     def convert(self, word):
         return(binascii.hexlify(bytearray(word)))
 
-    def TxMCDUWords(self):
-        spi.xfer2([0xA1, 0x89, 0x01, 0x01, 0x12])
+    def TxMCDUMaintWords(self):
+        #spi.xfer2([0xA1, 0xff, 0x09, 0x00, 0x80, 0x17, 0xf8, 0xfd, 0x8f, 0x5e, 0x23, 0x00, 0xe0, 0x7d, 0x00, 0xbc, 0x82, 0x1d, 0x08, 0x0f, 0x00])
+        spi.xfer2([0xa1, 0xff, 0x90, 0x00, 0x80, 0xe8, 0xf8, 0xfd, 0x8f, 0x7a, 0x23, 0x00, 0xe0])
 
+    def TxMCDUArbitraryWords(self, wordarray):
+        command = [0xa1]
+        command.extend(wordarray)
+        spi.xfer2(command)
+        
     def ReadMCDUWords(self):
         #0x98 is the address for register access, 0x800D is the Rx 0 Threshold Value Register
         spi.xfer2([0x98,0x80,0x0D])
         #0x80 is the command for reading data, the next two bytes are dummy bytes to clock out the data
         ch0rxreg = spi.xfer2([0x80,0x00,0x00])
         threshold = ch0rxreg[1] + ch0rxreg[2]
-        self.formatResponse(ch0rxreg, "Read MCDU Rx 2 Threshold Value Register:")
+        #self.formatResponse(ch0rxreg, "Read MCDU Rx 2 Threshold Value Register:")
 
         #0x98 is the address for register access, 0x806A is the Rx 2 FIFO Count
         spi.xfer2([0x98,0x80,0x6A])
         ch0rxcnt = spi.xfer2([0x80,0x00,0x00])
         datawordcnt = ch0rxcnt[1]
-        print(f"Rx 1 Threshold Value Register:{datawordcnt}")
+        #print(f"Rx 2 Threshold Value Register:{datawordcnt}")
 
 
         if datawordcnt > 0:
@@ -188,8 +206,11 @@ class ARINC():
                 dataword = spi.xfer2([0xC0,0x20,0x00,0x00,0x00,0x00])
                 #label = oct(int('{:08b}'.format(dataword[2])[::-1], 2))
                 label = oct(dataword[2])
+                character = dataword[5] & 0x7f
+                upperData = dataword[4]
+                subData =   dataword[3]
                 label = label.replace('0o','')
-                print(f"Label: {label} {dataword[3]} {dataword[4]} {dataword[5]}")
+                #print(f"Label: {label} {dataword[3]} {dataword[4]} {dataword[5]}")
 
                 print(label)
                 match label:
@@ -197,21 +218,44 @@ class ARINC():
                     #Identifies the avionics component
                     # The ssi becomes the label that will be returned from the MCDU
                     case "304":
-                        print(f"Case 304 which is the CDU address")
-                        self.TxMCDUWords()
+                        #print(f"Case 304 which is the CDU address")
+                        #self.TxMCDUWords()
+                        if(character == 0x05):
+                            if(upperData == 0x01):
+                                print(f"Enquire received from MAL: {dataword[4]}")
+                                self.waitForEnquire = True
+                                self.normalText = False
+                                self.TxMCDUArbitraryWords([0x91, 0x01, 0x01, 0x12])
+                                print(f"RTS Sent.")
+                            elif(upperData == 0x00):
+                                print(f"Normal Request Received")
+                                self.normalText = True
+                                self.TxMCDUArbitraryWords([0x91, 0x01, 0x00, 0x92])
+                        elif((character == 0x06) and (self.waitForEnquire == True)):
+                            print(f"ACK Received RC: {upperData}")
+                        elif(character == 0x15):
+                            print(f"NACK Received RC: {upperData}")
+                        elif((character == 0x13) and (subData == 0x00) and (self.waitForEnquire == True) and (self.normalText == False)):
+                            print(f"CTS Received: {upperData}")
+                            self.TxMCDUArbitraryWords(self.functionMenu)
+                                
+                    case "377":
+                        print(f"Device Identifier")
+                    #case _:
+                        #print(f"Label: {label} {dataword[3]} {dataword[4]} {dataword[5]}")
 
-        else:
-            if self.start_countdown == False:
-                #print(f"No data received.Starting Countdown")
-                self.check_time = time.perf_counter()
+        if self.start_countdown == False:
+            #print(f"Starting Countdown")
+            self.check_time = time.perf_counter()
             self.start_countdown = True
 
         if self.start_countdown:
 
             now_time = time.perf_counter()
-            if ((now_time - self.check_time) >= 5):
-                #sensorpack.resetData()
-                print(f"Resetting Data")
+            if ((now_time - self.check_time) >= .24):
+                self.TxMCDUMaintWords()
+                #print(f"Sending maintenance words")
+                self.start_countdown = False
 
 if __name__=="__main__":
     ARINCBOARD = ARINC()
@@ -226,7 +270,7 @@ if __name__=="__main__":
         #DISPLAYSURF.fill(c.BLACK)
 
         ARINCBOARD.ReadMCDUWords()
-        time.sleep(.5)
+        time.sleep(.005)
 
         # Update the display
         #pygame.display.flip()
