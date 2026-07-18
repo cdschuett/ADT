@@ -1,0 +1,312 @@
+import constants as c
+import RPi.GPIO as GPIO
+import spidev
+import time
+
+# SPI Configuration 
+# Use BCM pi mode for compatibility
+# If you switch to BOARD mode be sure to change pin numbers
+GPIO.setmode(GPIO.BCM)
+
+# PIN 27 - READY: Goes high when post initialization is complete
+# PIN 22 - MRST: Rests the HI-3220 Must Asset Low for a minimum of 225 ns
+# PIN 17 - RUN: Enables the transmit and receive schedulers
+GPIO.setup(27, GPIO.IN)
+GPIO.setup(22, GPIO.OUT)
+GPIO.setup(17, GPIO.OUT)
+
+# Configues SPI. This is configured for MODE 0 CPOL and CPHA 0
+# Data sampled on rising edge and shifted out on falling edge
+# This uses the default SPIN pins onthe rpi
+spi = spidev.SpiDev()
+spi.open(0,0)
+spi.mode = 0b00
+spi.max_speed_hz = 1200000
+
+class ARINC():
+    ready = False
+    false = False
+    chipSetup = False
+    start_countdown = False
+    #State machine values
+    waitForEnquire = False
+    normalText = True
+    mal = 0
+    rc = 0
+    keyPress = 0
+    keyPressAction = False
+
+    def __init__(self):
+        #Script state machine logic
+        # ready - Chip is in ready state
+        self.ready = False
+        self.false = False
+        self.chipSetup = False
+        self.start_countdown = False
+        self.keyPress = 0
+        self.check_time = time.perf_counter()
+
+        #Initial chip reset
+        self.resetChip()
+
+        spi.xfer2([0xE0,0x20,0x00])
+        spi.xfer2([0x98,0x80,0x00])
+        spi.xfer2([0x88,0xC0])
+        mcr_reply = spi.xfer2([0x80,0x00])
+        self.formatResponse(mcr_reply, "0xC0 Activates Tx and Rx in MCR")
+
+        if GPIO.input(27):
+            GPIO.output(17, GPIO.HIGH)
+            self.ready = True
+            self.run = True
+        else:
+            self.ready = False
+            self.run = False
+
+        if (self.chipSetup == False) and (self.ready == True) and (self.run == True):
+            # Set Rx and Tx active in MCR
+            reply = spi.xfer2([0x00,0xC0])
+            time.sleep(.01)
+            # Check 
+            mcr_reply = spi.xfer2([0x04,0x00]) # Desired is 192 dec or C0 which is tx and rx active
+            msr_reply = spi.xfer2([0x08,0x00]) #Desired is 48 dec or 30 hex which is ready and active
+            self.formatResponse(mcr_reply, "MCR State Should be 0xC0")
+            self.formatResponse(msr_reply, "MSR State Should be 0x30")
+
+            zeroStatus = self.enableRxRegister(0)
+            oneStatus = self.enableRxRegister(1)
+            twoStatus = self.enableRxRegister(2)
+            threeStatus = self.enableRxRegister(3)
+            txOneStatus = self.enableTxRegister(1)
+
+
+            for i in range(256):
+                spi.xfer2([0x98,0x6A,((0x00 + i) & 0xFF)])
+                spi.xfer2([0x88,0xFF])
+                spi.xfer2([0x98,0x68,((0x00 + i) & 0xFF)])
+                spi.xfer2([0x88,0xFF])
+
+            if zeroStatus and oneStatus and twoStatus:
+                print(f"Chip Setup Complete")
+                self.chipSetup == True
+            else:
+                print(f"Chip Setup Failure")
+
+    def isChipReady(self):
+        return self.ready
+
+    def isChipSetupComplete(self):
+        return self.chipSetup
+
+    def resetChip(self):
+        #Reset chip
+        GPIO.output(22, GPIO.LOW)
+        time.sleep(.5)
+        GPIO.output(22, GPIO.HIGH)
+        return
+
+    def checkRxRegister(self, registerNum):
+        if 0 <= registerNum <= 15:
+            reg = 0x20 + (registerNum & 0x0F)
+            spi.xfer2([0x98,0x80,reg])
+            write = spi.xfer2([0x80,0x00])
+            if write[1] != 0x82:
+                print(f"Receiver {registerNum} Fail {write}")
+                return False
+            else:
+                print(f"Receiver {registerNum} Active")
+                return True
+        else:
+            return False
+
+    def enableRxRegister(self, registerNum):
+        if 0 <= registerNum <= 15:
+            reg = 0x20 + (registerNum & 0x0F)
+            spi.xfer2([0x98,0x80,reg])
+            spi.xfer2([0x88,0x82]) # Sets enable flag and lowspeed flag
+            write = spi.xfer2([0x80,0x00])
+            if write[1] != 0x82:
+                print(f"Receiver {registerNum} Fail {write}")
+                return False
+            else:
+                print(f"Receiver {registerNum} Active")
+                return True
+        else:
+            return False
+
+    def enableAllRx(self):
+        for i in range(16):
+            spi.xfer2([0x98,0x80,(0x20 + (i & 0x0F))])
+            spi.xfer2([0x88,0x82])
+            write = spi.xfer2([0x80,0x00])
+            if write != 0x82:
+                return False
+        return True
+
+    def formatResponse(self, data, msg):
+        hex_list = list(map(hex, data))
+        print(f"{msg} {hex_list}")
+
+    def enableTxRegister(self, registerNum):
+        if 0 <= registerNum <= 7:
+            reg = 0x30 + (registerNum & 0x07)
+            spi.xfer2([0x98,0x80,reg])
+            spi.xfer2([0x88,0x02]) # Sets enable flag and lowspeed flag
+            print(f"TX {registerNum} Active")
+            return True
+        else:
+            return False
+
+    def enableAllTx(self):
+        for i in range(8):
+            spi.xfer2([0x98,0x80,(0x30 + (i & 0x07))])
+            spi.xfer2([0x88,0x02])
+            write = spi.xfer2([0x80,0x00])
+            if write != 0x02:
+                return False
+        return True
+
+    def Write_MAP(self, upper,lower):
+        rdilut = spi.xfer2([0x98,upper,lower])
+
+    def swap32(self, i):
+        return struct.unpack("<I", struct.pack(">I", i))[0]
+
+    def reverse(self, lst):
+        new_lst = lst[::-1]
+        return new_lst
+
+    def convert(self, word):
+        return(binascii.hexlify(bytearray(word)))
+
+    def TxMCDUMaintWords(self):
+        #spi.xfer2([0xA1, 0xff, 0x09, 0x00, 0x80, 0x17, 0xf8, 0xfd, 0x8f, 0x5e, 0x23, 0x00, 0xe0, 0x7d, 0x00, 0xbc, 0x82, 0x1d, 0x08, 0x0f, 0x00])
+        spi.xfer2([0xa1, 0xff, 0x90, 0x00, 0x80, 0xe8, 0xf8, 0xfd, 0x8f, 0x7a, 0x23, 0x00, 0xe0])
+
+    def TxMCDUArbitraryWords(self, wordarray, chunk_size):
+        immTx = 0xa1
+        command = []
+        #wa = memoryview(wordarray)
+        wait = True
+
+        for i in range(0, len(wordarray), chunk_size):
+            while wait:
+                spi.xfer2([0x98,0x80,0x81])
+                txCount = spi.xfer2([0x80,0x00])
+                #print(f"Queue Size {txCount[1]}")
+                if txCount[1] == 0:
+                    wait = False
+
+            chunk = wordarray[i:i + chunk_size]
+            command.append(immTx)
+            command.extend(chunk)
+            #print(f"{command}")
+            spi.xfer2(command)
+            command.clear()
+            wait = True
+
+
+    def ReadMCDUWords(self):
+        #0x98 is the address for register access, 0x800D is the Rx 0 Threshold Value Register
+        spi.xfer2([0x98,0x80,0x0D])
+        #0x80 is the command for reading data, the next two bytes are dummy bytes to clock out the data
+        ch0rxreg = spi.xfer2([0x80,0x00,0x00])
+        threshold = ch0rxreg[1] + ch0rxreg[2]
+        #self.formatResponse(ch0rxreg, "Read MCDU Rx 2 Threshold Value Register:")
+
+        #0x98 is the address for register access, 0x806A is the Rx 2 FIFO Count
+        spi.xfer2([0x98,0x80,0x6A])
+        ch0rxcnt = spi.xfer2([0x80,0x00,0x00])
+        datawordcnt = ch0rxcnt[1]
+        #print(f"Rx 2 Threshold Value Register:{datawordcnt}")
+
+
+        if datawordcnt > 0:
+            self.start_countdown = False
+            for i in range(datawordcnt):
+                dataword = spi.xfer2([0xC0,0x20,0x00,0x00,0x00,0x00])
+                #label = oct(int('{:08b}'.format(dataword[2])[::-1], 2))
+                label = oct(dataword[2])
+                character = dataword[5] & 0x7f
+                upperData = dataword[4]
+                subData =   dataword[3]
+                label = label.replace('0o','')
+                localKeyPress = self.keyPress
+                #print(f"Label: {label} {dataword[3]} {dataword[4]} {dataword[5]}")
+
+                #print(label)
+                match label:
+                    #Subsystem Identifier sent every one second
+                    #Identifies the avionics component
+                    # The ssi becomes the label that will be returned from the MCDU
+                    case "304":
+                        #print(f"Case 304 which is the CDU address")
+                        #self.TxMCDUWords()
+                        if(character == 0x05):
+                            if(upperData == 0x01):
+                                print(f"Enquire received from MAL: {dataword[4]}")
+                                self.waitForEnquire = True
+                                self.normalText = False
+                                self.TxMCDUArbitraryWords([0x91, 0x01, 0x01, 0x12], 128)
+                                print(f"RTS Sent.")
+                            elif(upperData == 0x00):
+                                print(f"Normal Request Received")
+                                self.normalText = True
+                                self.TxMCDUArbitraryWords([0x91, 0x01, 0x00, 0x92], 128)
+                        elif((character == 0x06) and (self.waitForEnquire == True)):
+                            print(f"ACK Received RC: {upperData}")
+                        elif(character == 0x15):
+                            print(f"NACK Received RC: {upperData}")
+                        elif((character == 0x13) and (subData == 0x00) and (self.waitForEnquire == True) and (self.normalText == False)):
+                            print(f"Function Menu CTS Received: {upperData} Sending menu")
+                            self.TxMCDUArbitraryWords(self.functionMenu, 128)
+                        elif((character == 0x13) and (self.normalText == True) and (self.keyPressAction == False)):
+                            print(f"Main menu CTS Received: {upperData}")
+                            self.TxMCDUArbitraryWords(self.configMenu, 128)
+                        elif((character == 0x13) and (self.normalText == True) and (self.keyPressAction == True)):
+                            self.keyPressAction == False;
+                            print(f"Sub menu CTS Received: {upperData}")
+                            match localKeyPress:
+                                case 0x7c:
+                                    print(f"7c keypress")
+                                    self.TxMCDUArbitraryWords(self.happyFaceMenu, 128)
+                                case 0x72:
+                                    print(f"72 keypress")
+                                    self.TxMCDUArbitraryWords(self.happyFaceMenu, 128)
+                                case 0x75:
+                                    print(f"75 keypress")
+                                    self.TxMCDUArbitraryWords(self.happyFaceMenu, 128)
+                                case 0x74:
+                                    print(f"74 keypress")
+                                    self.TxMCDUArbitraryWords(self.happyFaceMenu, 128)
+                                case 0x78:
+                                    print(f"78 keypress")
+                                    self.TxMCDUArbitraryWords(self.happyFaceMenu, 128)
+
+                        elif(character == 0x11):
+                            print(f"Menu {upperData}")
+                            self.keyPress = 0;
+                            self.keyPressAction = True
+                            self.keyPress = upperData
+                            self.TxMCDUArbitraryWords([0x91, 0x00, 0x00, 0x06], 128)
+                            self.TxMCDUArbitraryWords([0x91, 0x01, 0x00, 0x92], 128)
+
+
+                    case "377":
+                        continue
+                        #print(f"Device Identifier")
+                    #case _:
+                        #print(f"Label: {label} {dataword[3]} {dataword[4]} {dataword[5]}")
+
+        if self.start_countdown == False:
+            #print(f"Starting Countdown")
+            self.check_time = time.perf_counter()
+            self.start_countdown = True
+
+        if self.start_countdown:
+
+            now_time = time.perf_counter()
+            if ((now_time - self.check_time) >= .24):
+                self.TxMCDUMaintWords()
+                #print(f"Sending maintenance words")
+                self.start_countdown = False
