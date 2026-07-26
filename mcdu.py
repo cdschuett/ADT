@@ -42,7 +42,7 @@ pygame.display.set_caption("EICAS")
 pygame.mouse.set_visible(True)
 
 
-class ARINC():
+class MCDU():
     ready = False
     false = False
     chipSetup = False
@@ -316,7 +316,7 @@ class ARINC():
                 self.start_countdown = False
 
 if __name__=="__main__":
-    ARINCBOARD = ARINC()
+    ARINCBOARD = MCDU()
 
     while True:     
         #for event in pygame.event.get():              
