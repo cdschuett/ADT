@@ -26,13 +26,15 @@ if __name__=="__main__":
     
     rxStatus = [False, False, False, False, False, False, False, False]
     txStatus = [False, False, False, False]
-    mode = False
+    mode = "menu"
     reset = False
     rxTest = False
     DISPLAYSURF.fill(c.BLACK)
     MENU = m.MenuSprites()
+    MENU.mainMenu(DISPLAYSURF)
     CHIP = t.ARINC()
 
+    MENU.set_mode("menu")
     while True:
         events = pygame.event.get()
         for event in events:              
@@ -41,25 +43,32 @@ if __name__=="__main__":
                 pygame.quit()
                 sys.exit()
 
-        MENU.update(events)
         mode = MENU.get_mode()
-        reset = MENU.get_reset()
-        rxTest = MENU.get_check()
+        MENU.update(events)
 
-        if mode == "test":
+        if mode == "menu":
             DISPLAYSURF.fill(c.BLACK)
-            MENU.testElements(DISPLAYSURF, CHIP.isChipSetupComplete(), CHIP.isChipReady(), rxStatus)
+            MENU.mainMenu(DISPLAYSURF)
+        elif mode == "test":
+            DISPLAYSURF.fill(c.BLACK)
+            MENU.testMenu(DISPLAYSURF, CHIP.isChipSetupComplete(), CHIP.isChipReady(), rxStatus, txStatus)
+            reset = MENU.get_reset()
+            rxTest = MENU.get_check()
             if reset:
                 CHIP.resetChip()
+                rxStatus = [False, False, False, False, False, False, False, False]
+                txStatus = [False, False, False, False]
             if rxTest:
                 for i in range(7):
                     rxStatus[i] = CHIP.checkRxRegister(i)
+                for i in range(3):
+                    txStatus[i] = CHIP.checkTxRegister(i)
         elif mode == "mcdu":
-            DISPLAYSURF.fill(c.WHITE)
+            DISPLAYSURF.fill(c.BLUE)
+            MENU.mcduMenu(DISPLAYSURF)
+            CHIP.ReadMCDUWords()
         elif mode == "eicas":
             DISPLAYSURF.fill(c.PURPLE)
-        else:
-            MENU.menuElements(DISPLAYSURF)
 
         # Update the display
         pygame.display.flip()
