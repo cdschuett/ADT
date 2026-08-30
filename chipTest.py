@@ -330,3 +330,85 @@ class ARINC():
                 self.TxMCDUMaintWords()
                 #print(f"Sending maintenance words")
                 self.start_countdown = False
+
+    def ReadDataWords(self, sensorpack):
+        spi.xfer2([0x98,0x80,0x0D])
+        ch0rxreg = spi.xfer2([0x80,0x00,0x00])
+        threshold = ch0rxreg[1] + ch0rxreg[2]
+        #self.formatResponse(ch0rxreg, "Rx 0 Threshold Value Register:")
+
+        spi.xfer2([0x98,0x80,0x68])
+        ch0rxcnt = spi.xfer2([0x80,0x00,0x00])
+        datawordcnt = ch0rxcnt[1]
+        #print(f"Rx 0 Threshold Value Register:{datawordcnt}")
+
+
+        if datawordcnt > 0:
+            self.start_countdown = False
+            sensorpack.FadecStatus = True
+            for i in range(datawordcnt):
+                dataword = spi.xfer2([0xC0,0x00,0x00,0x00,0x00,0x00])
+                #label = oct(int('{:08b}'.format(dataword[2])[::-1], 2))
+                label = oct(dataword[2])
+                label = label.replace('0o','')
+                #print(f"Label: {label} {dataword[3]} {dataword[4]} {dataword[5]}")
+
+                #print(label)
+                match label:
+                    #Subsystem Identifier sent every one second
+                    #Identifies the avionics component
+                    # The ssi becomes the label that will be returned from the MCDU
+                    case "72":
+                        #print(f"Case 072")
+                        side = int(dataword[3]) & 0x1
+                        if side > 0:
+                            sensorpack.n1LeftVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                        else:
+                            sensorpack.n1RightVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                    case "321":
+                        side = int(dataword[3]) & 0x1
+                        if side > 0:
+                            sensorpack.egtLeftVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                        else:
+                            sensorpack.egtRightVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                    case "344":
+                        side = int(dataword[3]) & 0x1
+                        if side > 0:
+                            #print(f"Case 344 Left Side")
+                            sensorpack.n2LeftVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                        else:
+                            #print(f"Case 344 Right Side")
+                            sensorpack.n2RightVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                    case "255":
+                        side = int(dataword[3]) & 0x03
+                        if side == 0:
+                            #print(f"Case 255 Fuel Center")
+                            sensorpack.CenterTank = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                        elif side == 1:
+                            #print(f"Case 255 Fuel Left")
+                            sensorpack.LeftTank = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                        elif side == 2:
+                            #print(f"Case 255 Fuel Right")
+                            sensorpack.RightTank = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                    case "317":
+                        side = int(dataword[3]) & 0x1
+                        if side > 0:
+                            #print(f"Case 317 Left Side")
+                            sensorpack.oilPLeftVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                        else:
+                            #print(f"Case 317 Right Side")
+                            sensorpack.oilPRightVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+
+        else:
+            if self.start_countdown == False:
+                #print(f"No data received.Starting Countdown")
+                self.check_time = time.perf_counter()
+            self.start_countdown = True
+
+        if self.start_countdown:
+            
+            now_time = time.perf_counter()
+            if ((now_time - self.check_time) >= 5):
+                sensorpack.resetData()
+                #print(f"Resetting Data")
+

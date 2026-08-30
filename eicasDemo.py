@@ -8,40 +8,6 @@ import RPi.GPIO as GPIO
 import time
 import sys
 
-pygame.init()
-pygame.font.init()
-
-font = pygame.font.SysFont('Arial', 30)
-
-FramePerSec = pygame.time.Clock()
-
-#SPI Configuration 
-# Use BCM pi mode for compatibility
-# If you switch to BOARD mode be sure to change pin numbers
-GPIO.setmode(GPIO.BCM)
-
-# PIN 27 - READY: Goes high when post initialization is complete
-# PIN 22 - MRST: Rests the HI-3220 Must Asset Low for a minimum of 225 ns
-# PIN 17 - RUN: Enables the transmit and receive schedulers
-GPIO.setup(27, GPIO.IN)
-GPIO.setup(22, GPIO.OUT)
-GPIO.setup(17, GPIO.OUT)
-
-# Configues SPI. This is configured for MODE 0 CPOL and CPHA 0
-# Data sampled on rising edge and shifted out on falling edge
-# This uses the default SPIN pins onthe rpi
-spi = spidev.SpiDev()
-spi.open(0,0)
-spi.mode = 0b00
-spi.max_speed_hz = 1200000
-
-DISPLAYSURF = pygame.display.set_mode((c.SCREEN_WIDTH, c.SCREEN_HEIGHT))
-#DISPLAYSURF = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
-DISPLAYSURF.fill(c.BLACK)
-pygame.display.set_caption("EICAS")
-pygame.mouse.set_visible(True)
-
-
 class ARINC():
     ready = False
     false = False

@@ -6,7 +6,7 @@ import pygame.gfxdraw
 
 class GFXDrawCircleSprite():
     def __init__(self):
-        pass
+        self.mainMenu_button = pygame.Rect(c.col_four, c.row_six, 100, 100)
 
     def dialScale(self, x, orgmin, orgmax, newmin, newmax):
         scaled_x = ((x - orgmin) / (orgmax - orgmin)) * (newmax - newmin) + newmin
@@ -14,6 +14,20 @@ class GFXDrawCircleSprite():
 
     def eicasComponents(self, screen):
         super().__init__() 
+
+        mouse = pygame.mouse.get_pos()
+
+        pygame.draw.rect(screen, c.BLUE if self.mainMenu_button.collidepoint(mouse) else c.RED, self.mainMenu_button)
+
+        self.font = pygame.font.SysFont("Arial", 20)
+
+        text_data = [
+        {"text": "Main", "color": c.WHITE, "pos": (c.col_four + 10, c.row_six + 10)}
+        ]
+        for item in text_data:
+            text_surface = self.font.render(item["text"], True, item["color"])
+            text_rect = text_surface.get_rect(topleft=item["pos"])
+            screen.blit(text_surface, text_rect)
 
         # Draw Vertical Divider
         pygame.gfxdraw.box(screen, (c.half, c.v_y_divider, 3, 750), c.GREEN)

@@ -78,6 +78,11 @@ class MenuSprites():
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if self.mainMenu_button.collidepoint(event.pos):
                         self.mode = "menu"
+        elif self.mode == "eicas":
+            for event in events:
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if self.mainMenu_button.collidepoint(event.pos):
+                        self.mode = "menu"
 
 
 
