@@ -5,6 +5,8 @@ import pygame, sys
 from pygame.locals import *
 import pygame.gfxdraw
 from Graphics import GFXDrawCircleSprite
+from eicasDemo import SensorPack
+from eicasDemo import TextElement
 import time
 import sys
 
@@ -33,6 +35,9 @@ if __name__=="__main__":
     MENU = m.MenuSprites()
     MENU.mainMenu(DISPLAYSURF)
     CHIP = t.ARINC()
+    EICAS = GFXDrawCircleSprite()
+    EICASTEXT = TextElement()
+    EICASSENSOR = SensorPack()
 
     MENU.set_mode("menu")
     while True:
@@ -68,7 +73,14 @@ if __name__=="__main__":
             MENU.mcduMenu(DISPLAYSURF)
             CHIP.ReadMCDUWords()
         elif mode == "eicas":
-            DISPLAYSURF.fill(c.PURPLE)
+            DISPLAYSURF.fill(c.BLACK)
+            CHIP.ReadDataWords(EICASSENSOR)
+            EICAS.draw(DISPLAYSURF)
+            EICASTEXT.drawScreenLabels(DISPLAYSURF)
+            EICASTEXT.drawDialNums(DISPLAYSURF)
+            EICASTEXT.drawSensorVals(DISPLAYSURF, EICASSENSOR)
+            EICASTEXT.drawFuelVals(DISPLAYSURF, EICASSENSOR)
+            EICAS.drawDials(DISPLAYSURF, EICASSENSOR)
 
         # Update the display
         pygame.display.flip()
