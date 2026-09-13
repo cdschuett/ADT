@@ -1,5 +1,6 @@
 import constants as c
 import pygame, sys
+from collections import deque
 from pygame.locals import *
 import pygame.gfxdraw
 from Graphics import GFXDrawCircleSprite
@@ -158,9 +159,9 @@ class ARINC():
                         #print(f"Case 072")
                         side = int(dataword[3]) & 0x1
                         if side > 0:
-                            sensorpack.n1LeftVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                            sensorpack.n1LeftVal.append((dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2))
                         else:
-                            sensorpack.n1RightVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                            sensorpack.n1RightVal.append((dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2))
                     case "321":
                         side = int(dataword[3]) & 0x1
                         if side > 0:
@@ -171,10 +172,10 @@ class ARINC():
                         side = int(dataword[3]) & 0x1
                         if side > 0:
                             #print(f"Case 344 Left Side")
-                            sensorpack.n2LeftVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                            sensorpack.n2LeftVal.append((dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2))
                         else:
                             #print(f"Case 344 Right Side")
-                            sensorpack.n2RightVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                            sensorpack.n2RightVal.append((dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2))
                     case "255":
                         side = int(dataword[3]) & 0x03
                         if side == 0:
@@ -220,12 +221,18 @@ class SensorPack():
         #Default Values
         self.tat = 22.0
         self.FadecStatus = False
-        self.n1LeftVal = 100.0
-        self.n1RightVal = 100.0
+        self.n1LeftVal = deque(maxlen=c.VECTOR)
+        self.n1RightVal = deque(maxlen=c.VECTOR)
+        for i in range(c.VECTOR):
+            self.n1LeftVal.append(0)
+            self.n1RightVal.append(0)
         self.egtLeftVal = 0
         self.egtRightVal = 0
-        self.n2LeftVal = 100.0
-        self.n2RightVal = 100.0
+        self.n2LeftVal = deque(maxlen=c.VECTOR)
+        self.n2RightVal = deque(maxlen=c.VECTOR)
+        for i in range(c.VECTOR):
+            self.n2LeftVal.append(0)
+            self.n2RightVal.append(0)
         self.FFULeftVal = 3.0
         self.FFURightVal = 3.0
         self.CenterTank = 12000
@@ -237,12 +244,14 @@ class SensorPack():
     def resetData(self):
         self.tat = 22.0
         self.FadecStatus = False
-        self.n1LeftVal = 0.0
-        self.n1RightVal = 0.0
+        for i in range(c.VECTOR):
+            self.n1LeftVal.append(0)
+            self.n1RightVal.append(0)
         self.egtLeftVal = 0
         self.egtRightVal = 0
-        self.n2LeftVal = 0.0
-        self.n2RightVal = 0.0
+        for i in range(c.VECTOR):
+            self.n2LeftVal.append(0)
+            self.n2RightVal.append(0)
         self.FFULeftVal = 0.0
         self.FFURightVal = 0.0
         self.CenterTank = 12000
@@ -258,10 +267,10 @@ class SensorPack():
         return(self.FadecStatus)
 
     def readN1Left(self):
-        return(self.n1LeftVal)
+        return(sum(self.n1LeftVal)/len(self.n1LeftVal))
 
     def readN1Right(self):
-        return(self.n1RightVal)
+        return(sum(self.n1RightVal)/len(self.n1RightVal))
 
     def readEgtLeft(self):
         return(self.egtLeftVal)
@@ -270,10 +279,10 @@ class SensorPack():
         return(self.egtRightVal)
 
     def readN2Left(self):
-        return(self.n2LeftVal)
+        return(sum(self.n2LeftVal)/len(self.n2LeftVal))
 
     def readN2Right(self):
-        return(self.n2RightVal)
+        return(sum(self.n2RightVal)/len(self.n2RightVal))
 
     def readFFULeft(self):
         return(self.FFULeftVal)
@@ -334,8 +343,8 @@ class TextElement:
         {"text": str(round(sensor.readN1Right(),1)), "color": c.WHITE, "pos": (c.col_two + c.RADIUS1 + 8, c.row_one - c.RADIUS1)},
         {"text": str(sensor.readEgtLeft()), "color": c.WHITE, "pos": (c.col_one + c.RADIUS1 + 8, c.row_two - c.RADIUS1)},
         {"text": str(sensor.readEgtRight()), "color": c.WHITE, "pos": (c.col_two + c.RADIUS1 + 8, c.row_two - c.RADIUS1)},
-        {"text": str(round(sensor.readN1Left(),1)), "color": c.WHITE, "pos": (c.col_one + c.RADIUS1 + 8, c.row_three - c.RADIUS1)},
-        {"text": str(round(sensor.readN1Right(),1)), "color": c.WHITE, "pos": (c.col_two + c.RADIUS1 + 8, c.row_three - c.RADIUS1)},
+        {"text": str(round(sensor.readN2Left(),1)), "color": c.WHITE, "pos": (c.col_one + c.RADIUS1 + 8, c.row_three - c.RADIUS1)},
+        {"text": str(round(sensor.readN2Right(),1)), "color": c.WHITE, "pos": (c.col_two + c.RADIUS1 + 8, c.row_three - c.RADIUS1)},
         {"text": str(sensor.readFFULeft()), "color": c.WHITE, "pos": (c.col_one + c.RADIUS1 + 8, c.row_four - c.RADIUS1)},
         {"text": str(sensor.readFFURight()), "color": c.WHITE, "pos": (c.col_two + c.RADIUS1 + 8, c.row_four - c.RADIUS1)}
         ]

@@ -3,6 +3,9 @@ import pygame
 #Framerate
 FPS = 24
 
+#collections smoothing size
+VECTOR = 10
+
 # Predefined some colors
 BLUE  = (0, 0, 255)
 RED   = (255, 0, 0)

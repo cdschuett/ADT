@@ -55,11 +55,15 @@ class ARINC():
         #Initial chip reset
         self.resetChip()
 
-        spi.xfer2([0xE0,0x20,0x00])
         spi.xfer2([0x98,0x80,0x00])
         spi.xfer2([0x88,0xC0])
-        mcr_reply = spi.xfer2([0x80,0x00])
-        self.formatResponse(mcr_reply, "0xC0 Activates Tx and Rx in MCR")
+        #status_reply = spi.xfer2([0x80,0x00])
+        #self.formatResponse(mcr_reply, "0xC0 Activates Tx and Rx in MCR")
+
+        spi.xfer2([0x98,0x80,0x01])
+        status_read = spi.xfer2([0x80,0x00,0x00])
+        self.formatResponse(status_read, "0xc0 and 0x30 Indicate Tx/Rx Active and Chip is Ready")
+
 
         if GPIO.input(27):
             GPIO.output(17, GPIO.HIGH)
@@ -84,6 +88,7 @@ class ARINC():
             twoStatus = self.enableRxRegister(2)
             threeStatus = self.enableRxRegister(3)
             txOneStatus = self.enableTxRegister(1)
+            txTwoStatus = self.enableTxRegister(2)
 
 
             for i in range(256):
@@ -92,7 +97,7 @@ class ARINC():
                 spi.xfer2([0x98,0x68,((0x00 + i) & 0xFF)])
                 spi.xfer2([0x88,0xFF])
 
-            if zeroStatus and oneStatus and twoStatus:
+            if zeroStatus and oneStatus and twoStatus and threeStatus:
                 print(f"Chip Setup Complete")
                 self.chipSetup == True
             else:
@@ -144,6 +149,7 @@ class ARINC():
             reg = 0x20 + (registerNum & 0x0F)
             spi.xfer2([0x98,0x80,reg])
             spi.xfer2([0x88,0x82]) # Sets enable flag and lowspeed flag
+            spi.xfer2([0x98,0x80,reg])
             write = spi.xfer2([0x80,0x00])
             if write[1] != 0x82:
                 print(f"Receiver {registerNum} Fail {write}")
@@ -235,7 +241,7 @@ class ARINC():
         #self.formatResponse(ch0rxreg, "Read MCDU Rx 2 Threshold Value Register:")
 
         #0x98 is the address for register access, 0x806A is the Rx 2 FIFO Count
-        spi.xfer2([0x98,0x80,0x6A])
+        spi.xfer2([0x98,0x80,0x6B])
         ch0rxcnt = spi.xfer2([0x80,0x00,0x00])
         datawordcnt = ch0rxcnt[1]
         #print(f"Rx 2 Threshold Value Register:{datawordcnt}")
@@ -244,7 +250,7 @@ class ARINC():
         if datawordcnt > 0:
             self.start_countdown = False
             for i in range(datawordcnt):
-                dataword = spi.xfer2([0xC0,0x20,0x00,0x00,0x00,0x00])
+                dataword = spi.xfer2([0xC0,0x30,0x00,0x00,0x00,0x00])
                 #label = oct(int('{:08b}'.format(dataword[2])[::-1], 2))
                 label = oct(dataword[2])
                 character = dataword[5] & 0x7f
@@ -260,7 +266,7 @@ class ARINC():
                     #Identifies the avionics component
                     # The ssi becomes the label that will be returned from the MCDU
                     case "304":
-                        #print(f"Case 304 which is the CDU address")
+                        print(f"Case 304 which is the CDU address")
                         #self.TxMCDUWords()
                         if(character == 0x05):
                             if(upperData == 0x01):
@@ -337,7 +343,7 @@ class ARINC():
         threshold = ch0rxreg[1] + ch0rxreg[2]
         #self.formatResponse(ch0rxreg, "Rx 0 Threshold Value Register:")
 
-        spi.xfer2([0x98,0x80,0x68])
+        spi.xfer2([0x98,0x80,0x69])
         ch0rxcnt = spi.xfer2([0x80,0x00,0x00])
         datawordcnt = ch0rxcnt[1]
         #print(f"Rx 0 Threshold Value Register:{datawordcnt}")
@@ -347,7 +353,7 @@ class ARINC():
             self.start_countdown = False
             sensorpack.FadecStatus = True
             for i in range(datawordcnt):
-                dataword = spi.xfer2([0xC0,0x00,0x00,0x00,0x00,0x00])
+                dataword = spi.xfer2([0xC0,0x10,0x00,0x00,0x00,0x00])
                 #label = oct(int('{:08b}'.format(dataword[2])[::-1], 2))
                 label = oct(dataword[2])
                 label = label.replace('0o','')
@@ -362,9 +368,9 @@ class ARINC():
                         #print(f"Case 072")
                         side = int(dataword[3]) & 0x1
                         if side > 0:
-                            sensorpack.n1LeftVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                            sensorpack.n1LeftVal.append((dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2))
                         else:
-                            sensorpack.n1RightVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                            sensorpack.n1RightVal.append((dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2))
                     case "321":
                         side = int(dataword[3]) & 0x1
                         if side > 0:
@@ -375,10 +381,10 @@ class ARINC():
                         side = int(dataword[3]) & 0x1
                         if side > 0:
                             #print(f"Case 344 Left Side")
-                            sensorpack.n2LeftVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                            sensorpack.n2LeftVal.append((dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2))
                         else:
                             #print(f"Case 344 Right Side")
-                            sensorpack.n2RightVal = (dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2)
+                            sensorpack.n2RightVal.append((dataword[4] << 6) + ((dataword[3] & 0x1ffc) >> 2))
                     case "255":
                         side = int(dataword[3]) & 0x03
                         if side == 0:
