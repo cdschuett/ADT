@@ -50,7 +50,7 @@ RX_FIFO_DEPTH = 64
 TX_FIFO_DEPTH = 32
 FIFO_FLUSH_KEY = 0xA5
 
-LabelLike = Union[int, str]
+LabelLike = int | str
 
 class SpidevTransport:
 
