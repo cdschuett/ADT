@@ -23,6 +23,35 @@ GPIO.setup(17, GPIO.OUT)
 # spi.mode = 0b00
 # spi.max_speed_hz = 1200000
 
+# Memory map (datasheet p. 11)
+RX_DATA_BASE = 0x0000           # 4 bytes per (channel, label): status + 3 data bytes
+RX_FIFO_ENABLE_MAP = 0x6800     # 32 bytes per channel, 1 bit per label
+RX_INT_MAP = 0x6A00             # 32 bytes per channel, 1 bit per label
+TX_FIFO_BASE = 0x6C00
+RX_FIFO_BASE = 0x7000
+TX_DESC_BASE = (0x4000, 0x4800, 0x5000, 0x5400, 0x5800, 0x5C00, 0x6000, 0x6400)
+RAM_TOP = 0x7FFF
+
+# SPI op-codes (datasheet Table 2, p. 44)
+OP_READ_AT_MAP = 0x80
+OP_WRITE_AT_MAP = 0x88
+OP_READ_MAP = 0x90
+OP_WRITE_MAP = 0x98
+OP_TRANSMIT = 0xA0          # | TTT
+OP_READ_RX_FIFO = 0xC0      # + CCCC0000
+OP_READ_IV_BLOCK = 0xC8     # + CCCC0000 -> status + 3 data
+OP_READ_IV_MESSAGE = 0xD0   # + CCCC0000 -> label + 3 data
+OP_WRITE_REG = 0xD8         # 11011AAA AAAA0000
+OP_READ_REG = 0xE0          # 1110AAAA AAAA0000
+OP_SOFT_RESET = 0xFA        # + 01011mmm
+OP_READ_ALL_PENDING = 0x28  # PIR, RPIRL, RPIRH (0x800A, 0x800B, 0x800C)
+
+RX_FIFO_DEPTH = 64
+TX_FIFO_DEPTH = 32
+FIFO_FLUSH_KEY = 0xA5
+
+LabelLike = Union[int, str]
+
 class SpidevTransport:
 
     def __init__(self, bus: int = 0, device: int = 0, speed_hz: int = 1_200_000, mode: int = 0):
@@ -37,6 +66,150 @@ class SpidevTransport:
 
     def close(self) -> None:
         self._spi.close()
+
+# =============================================================================
+# Register map (datasheet pp. 12-14)
+# =============================================================================
+class Reg(enum.IntEnum):
+    MCR = 0x8000        # Master Control (write address; also R/W via direct ops)
+    MCR_RD = 0x8001     # Master Control (read address)
+    MSR = 0x8002        # Master Status
+    PIR = 0x8004        # Pending Interrupt          (clear on read)
+    RPIRL = 0x8006      # Rx Pending Interrupt 7-0   (clear on read)
+    RPIRH = 0x8008      # Rx Pending Interrupt 15-8  (clear on read)
+    PIR_ALT = 0x800A    # alternate addresses used by multi-byte op 0x28
+    RPIRL_ALT = 0x800B
+    RPIRH_ALT = 0x800C
+    FTFL = 0x800D       # Rx FIFO threshold flags 7-0
+    FTFH = 0x800E       # Rx FIFO threshold flags 15-8
+    TFR = 0x800F        # Tx FIFO threshold flags
+    IAR0 = 0x8010       # Rx Interrupt Address (label) ch0..15 -> 0x8010-0x801F
+    RXC0 = 0x8020       # Rx Control ch0..15 -> 0x8020-0x802F
+    TXC0 = 0x8030       # Tx Control ch0..7 -> 0x8030-0x8037
+    TXRR0 = 0x8038      # Tx Repetition Rate ch0..7
+    TXSP0 = 0x8040      # Tx Sequence Pointer ch0..7 (read only)
+    LOOP = 0x8049       # Loop-back
+    PIER = 0x804A       # Pending Interrupt Enable
+    RIEL = 0x804B       # Rx Interrupt Enable 7-0
+    RIEH = 0x804C       # Rx Interrupt Enable 15-8
+    FIEL = 0x804D       # Rx FIFO Interrupt Enable 7-0
+    FIEH = 0x804E       # Rx FIFO Interrupt Enable 15-8
+    TFIE = 0x804F       # Tx FIFO Interrupt Enable
+    FTV0 = 0x8050       # Rx FIFO Threshold Value ch0..15
+    TFTV0 = 0x8060      # Tx FIFO Threshold Value ch0..7
+    RFC0 = 0x8068       # Rx FIFO Count ch0..15 (write 0xA5 to flush)
+    BISTS = 0x8078      # BIST Control / Status
+    BISTFL = 0x8079     # BIST fail address low
+    BISTFH = 0x807A     # BIST fail address high + MODE[2:0] in bits 7:5
+    AIFL = 0x807B       # Auto-init fail address low
+    AIFH = 0x807C       # Auto-init fail address high
+    WCM = 0x807E        # Watchdog channel mask (1 = masked)
+    WTR = 0x807F        # Watchdog timer (LSB = 20 ms)
+    TFC0 = 0x8080       # Tx FIFO Count ch0..7 (read only)
+
+
+class MCR(enum.IntFlag):
+    A429RX = 0x80    # global receive enable
+    A429TX = 0x40    # global transmit enable
+    AFLIP = 0x08     # flip label bit order (Rx and Tx)
+    TXMSK = 0x04     # suppress external Tx output for channels in loop-back
+    TX7OPT = 0x02    # status bit 7 = NEWHOST (1) or NEWTX7 (0)
+    TXDL256 = 0x01   # Tx0/Tx1 descriptor tables 256 long instead of 128
+
+
+class MSR(enum.IntFlag):
+    READY = 0x20
+    ACTIVE = 0x10      # RUN pin asserted, normal operation
+    SAFE = 0x08        # BIST / auto-init failure
+    RAM_BUSY = 0x04
+    PROGCY = 0x02      # EEPROM programming cycle in progress
+    AUTOINIT = 0x01    # loading from auto-init EEPROM
+
+
+class RXC(enum.IntFlag):
+    ENABLE = 0x80
+    PARITYEN = 0x20   # bit 32 replaced by parity-error flag (0 = OK / odd)
+    DECODER = 0x10    # SDI filtering using SD10/SD9
+    SD10 = 0x08
+    SD9 = 0x04
+    RATE = 0x02       # 1 = low speed (12.5 kb/s)
+    K50OPT = 0x01     # 50 kb/s (overrides RATE)
+
+
+class TXC(enum.IntFlag):
+    RUN = 0x80        # scheduler run/stop
+    PRESCALE = 0x40   # repetition-rate LSB: 0 = 10 ms, 1 = 1 ms
+    PARITY = 0x20     # bit 32 = parity (1) or data (0)
+    EVEN = 0x10       # 1 = even parity, 0 = odd parity
+    SKIP = 0x08       # wait for repetition-rate rollover before new cycle
+    TRISTATE = 0x04   # force TXP/TXN high (line driver high-Z)
+    RATE = 0x02       # 1 = low speed
+    K50OPT = 0x01     # 50 kb/s
+
+
+class PIR(enum.IntFlag):
+    EEABORTERR = 0x80
+    COPYERR = 0x40
+    AUTOERR = 0x20
+    CHKERR = 0x10
+    RAMFAIL = 0x08
+    RXRAMNEW = 0x04
+    RXFLAG = 0x02
+    TXFLAG = 0x01
+
+
+class PIER(enum.IntFlag):
+    RXRAMNEWE = 0x04
+    RXFLAGIE = 0x02
+    TXFLAGIE = 0x01
+
+
+class Speed(enum.Enum):
+    HIGH = "100k"     # 100 kb/s
+    K50 = "50k"       # 50 kb/s (non-standard)
+    LOW = "12.5k"     # 12.5 kb/s
+
+    @property
+    def bits(self) -> int:
+        """RATE / 50KOPT bits (same positions in RXC and TXC)."""
+        return {Speed.HIGH: 0x00, Speed.LOW: 0x02, Speed.K50: 0x01}[self]
+
+    @property
+    def bit_rate(self) -> float:
+        return {Speed.HIGH: 100_000.0, Speed.K50: 50_000.0, Speed.LOW: 12_500.0}[self]
+
+    @property
+    def word_time_s(self) -> float:
+        """32 bits + 4-bit minimum inter-word gap."""
+        return 36.0 / self.bit_rate
+
+    @classmethod
+    def from_bits(cls, value: int) -> "Speed":
+        if value & 0x01:
+            return cls.K50
+        return cls.LOW if value & 0x02 else cls.HIGH
+
+
+class TxOp(enum.IntEnum):
+    """Transmit descriptor op-codes (datasheet p. 27)."""
+    END = 0x0                 # end of sequence
+    DELAY = 0x1               # delay PTP milliseconds
+    IMMEDIATE = 0x2           # send descriptor bytes 5-8
+    IMMEDIATE_COND = 0x3      # ...only if Rx (chan,label) has new data
+    INDEXED = 0x4             # byte5 label + 24 data bits from Rx (chan,label)
+    INDEXED_COND = 0x5
+    INDEXED_SDI = 0x6         # as INDEXED but SDI replaced by descriptor SS bits
+    INDEXED_SDI_COND = 0x7
+
+
+class RamBist(enum.IntEnum):
+    """RBSEL2:0 values for the BIST control register."""
+    PATTERN = 0b001
+    WRITE_00 = 0b010
+    VERIFY_00 = 0b011
+    WRITE_FF = 0b100
+    VERIFY_FF = 0b101
+    INC_DEC = 0b110
 
 class ARINC():
     ready = False
