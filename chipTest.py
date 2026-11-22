@@ -18,10 +18,25 @@ GPIO.setup(17, GPIO.OUT)
 # Configues SPI. This is configured for MODE 0 CPOL and CPHA 0
 # Data sampled on rising edge and shifted out on falling edge
 # This uses the default SPIN pins onthe rpi
-spi = spidev.SpiDev()
-spi.open(0,0)
-spi.mode = 0b00
-spi.max_speed_hz = 1200000
+# spi = spidev.SpiDev()
+# spi.open(0,0)
+# spi.mode = 0b00
+# spi.max_speed_hz = 1200000
+
+class SpidevTransport:
+
+    def __init__(self, bus: int = 0, device: int = 0, speed_hz: int = 1_200_000, mode: int = 0):
+        self._spi = spidev.SpiDev()
+        self._spi.open(bus, device)
+        self._spi.max_speed_hz = int(speed_hz)
+        self._spi.mode = mode          # HI-3223 accepts 0 or 3 but the board is hardwired for 0
+
+    def transfer(self, data: bytes) -> bytes:
+        # xfer2 keeps CS asserted for the whole list (required by the HI-3223)
+        return bytes(self._spi.xfer2(list(data)))
+
+    def close(self) -> None:
+        self._spi.close()
 
 class ARINC():
     ready = False
